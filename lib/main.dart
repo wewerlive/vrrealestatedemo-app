@@ -25,12 +25,12 @@ class MyApp extends StatelessWidget {
       title: 'VR Real Estate Demo',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Color(0xFF2C2747), // Primary color
-          primary: Color(0xFF2C2747), // Primary color
-          primaryContainer: Color(0xFF998AE9), // Primary color accent
-          secondary: Color(0xFFE0FF63), // Accent color
-          background: Color(0xFFFFFFFF), // Base color
-          surface: Color(0xFFFFFFFF), // Surface color
+          seedColor: const Color(0xFF2C2747), // Primary color
+          primary: const Color(0xFF2C2747), // Primary color
+          primaryContainer: const Color(0xFF998AE9), // Primary color accent
+          secondary: const Color(0xFFE0FF63), // Accent color
+          background: const Color(0xFFFFFFFF), // Base color
+          surface: const Color(0xFFFFFFFF), // Surface color
           error: Colors.red, // Error color
           onPrimary: Colors.white, // Text color on primary
           onSecondary: Colors.black, // Text color on secondary
