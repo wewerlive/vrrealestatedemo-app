@@ -1,6 +1,11 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'dart:convert';
 import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:http/http.dart' as http;
 
 import 'package:vrrealstatedemo/screens/DevicesPage.dart';
 
@@ -71,166 +76,226 @@ class _LoginPageState extends State<LoginPage> {
         MaterialPageRoute(builder: (context) => const DevicesPage()),
       );
 
-      // final email = _emailController.text;
-      // final password = _passwordController.text;
+      final email = _emailController.text;
+      final password = _passwordController.text;
 
       // Check network connectivity
-      //   var connectivityResult = await Connectivity().checkConnectivity();
-      //   if (connectivityResult == ConnectivityResult.none) {
-      //     _showSnackBar(
-      //         'No internet connection. Please check your network settings.');
-      //     return;
-      //   }
+      var connectivityResult = await Connectivity().checkConnectivity();
+      if (connectivityResult == ConnectivityResult.none) {
+        _showSnackBar(
+            'No internet connection. Please check your network settings.');
+        return;
+      }
 
-      //   try {
-      //     final response = await http
-      //         .post(
-      //           Uri.parse(dotenv.env['API_URL']!),
-      //           headers: <String, String>{
-      //             'Content-Type': 'application/json; charset=UTF-8',
-      //           },
-      //           body: jsonEncode(<String, String>{
-      //             'email': email,
-      //             'password': password,
-      //           }),
-      //         )
-      //         .timeout(const Duration(seconds: 60)); // Set timeout duration
+      // try {
+      //   final response = await http
+      //       .post(
+      //         Uri.parse(dotenv.env['API_URL']!),
+      //         headers: <String, String>{
+      //           'Content-Type': 'application/json; charset=UTF-8',
+      //         },
+      //         body: jsonEncode(<String, String>{
+      //           'email': email,
+      //           'password': password,
+      //         }),
+      //       )
+      //       .timeout(const Duration(seconds: 60)); // Set timeout duration
 
-      //     if (response.statusCode == 200) {
-      //       // Store credentials securely
-      //       await _secureStorage.write(key: 'email', value: email);
-      //       await _secureStorage.write(key: 'password', value: password);
+      //   if (response.statusCode == 200) {
+      //     // Store credentials securely
+      //     await _secureStorage.write(key: 'email', value: email);
+      //     await _secureStorage.write(key: 'password', value: password);
 
-      //       _showSnackBar('Login successful');
-      //       Navigator.pushReplacement(
-      //         context,
-      //         MaterialPageRoute(builder: (context) => const DevicesPage()),
-      //       );
-      //     } else if (response.statusCode == 401) {
-      //       _showSnackBar('Unauthorized. Please check your credentials.');
-      //     } else if (response.statusCode == 500) {
-      //       _showSnackBar('Server error. Please try again later.');
-      //     } else {
-      //       _showSnackBar('An error occurred. Please try again.');
-      //     }
-      //   } on http.ClientException {
-      //     _showSnackBar('Network error. Please try again.');
-      //   } on TimeoutException {
-      //     _showSnackBar('Request timed out. Please try again.');
-      //   } catch (e) {
+      //     _showSnackBar('Login successful');
+      //     Navigator.pushReplacement(
+      //       context,
+      //       MaterialPageRoute(builder: (context) => const DevicesPage()),
+      //     );
+      //   } else if (response.statusCode == 401) {
+      //     _showSnackBar('Unauthorized. Please check your credentials.');
+      //   } else if (response.statusCode == 500) {
+      //     _showSnackBar('Server error. Please try again later.');
+      //   } else {
       //     _showSnackBar('An error occurred. Please try again.');
       //   }
+      // } on http.ClientException {
+      //   _showSnackBar('Network error. Please try again.');
+      // } on TimeoutException {
+      //   _showSnackBar('Request timed out. Please try again.');
+      // } catch (e) {
+      //   _showSnackBar('An error occurred. Please try again.');
+      // }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final theme = Theme.of(context);
+    final size = mediaQuery.size;
+
     return Scaffold(
-      body: LayoutBuilder(builder: (context, constraints) {
-        double padding = constraints.maxWidth * 0.1;
-        double fontSize = constraints.maxWidth * 0.05;
-        double iconSize = constraints.maxWidth * 0.18;
-        return Padding(
-          padding: EdgeInsets.symmetric(horizontal: padding),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                Icon(
-                  Icons.vrpano_outlined,
-                  size: iconSize,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-                const SizedBox(height: 16.0),
-                Text(
-                  'Welcome! to VR Real Estate',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      fontSize: fontSize / 2,
-                      color: Theme.of(context).colorScheme.primary),
-                ),
-                const SizedBox(height: 16.0),
-                TextFormField(
-                  controller: _emailController,
-                  decoration: InputDecoration(
-                    labelText: 'Email',
-                    labelStyle: TextStyle(
-                        color: Theme.of(context).colorScheme.onBackground),
-                    enabledBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(
-                          color: Theme.of(context).colorScheme.primary),
-                    ),
-                    focusedBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(
-                          color: Theme.of(context).colorScheme.primary),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              theme.colorScheme.primary,
+              theme.colorScheme.primaryContainer,
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                  minHeight: size.height -
+                      mediaQuery.padding.top -
+                      mediaQuery.padding.bottom),
+              child: IntrinsicHeight(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: size.width * 0.1),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: <Widget>[
+                        SizedBox(height: size.height * 0.05),
+                        Icon(
+                          Icons.vrpano_outlined,
+                          size: size.width * 0.25,
+                          color: theme.colorScheme.onPrimary,
+                        ),
+                        SizedBox(height: size.height * 0.03),
+                        Text(
+                          'Welcome to VR Real Estate',
+                          style: theme.textTheme.headlineMedium?.copyWith(
+                            color: theme.colorScheme.onPrimary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        SizedBox(height: size.height * 0.05),
+                        _buildTextField(
+                          controller: _emailController,
+                          label: 'Email',
+                          validator: _validateEmail,
+                          icon: Icons.email,
+                        ),
+                        SizedBox(height: size.height * 0.02),
+                        _buildTextField(
+                          controller: _passwordController,
+                          label: 'Password',
+                          validator: _validatePassword,
+                          icon: Icons.lock,
+                          obscureText: _obscureText,
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscureText
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
+                              color: theme.colorScheme.onPrimary,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _obscureText = !_obscureText;
+                              });
+                            },
+                          ),
+                        ),
+                        SizedBox(height: size.height * 0.04),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            foregroundColor: theme.colorScheme.primary,
+                            backgroundColor: theme.colorScheme.secondary,
+                            padding: EdgeInsets.symmetric(
+                                vertical: size.height * 0.02),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                          ),
+                          onPressed: _handleSignIn,
+                          child: Text(
+                            'Login',
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: size.height * 0.02),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: <Widget>[
+                            TextButton(
+                              onPressed: () {
+                                // Handle forgot password logic
+                              },
+                              child: Text(
+                                'Forgot Password?',
+                                style: theme.textTheme.bodyLarge?.copyWith(
+                                  color: theme.colorScheme.onPrimary,
+                                ),
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                // Handle signup logic
+                              },
+                              child: Text(
+                                'Sign Up',
+                                style: theme.textTheme.bodyLarge?.copyWith(
+                                  color: theme.colorScheme.onPrimary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: size.height * 0.05),
+                      ],
                     ),
                   ),
-                  validator: _validateEmail,
                 ),
-                const SizedBox(height: 16.0),
-                TextFormField(
-                  controller: _passwordController,
-                  obscureText: _obscureText,
-                  decoration: InputDecoration(
-                    labelText: 'Password',
-                    labelStyle: TextStyle(
-                        color: Theme.of(context).colorScheme.onBackground),
-                    enabledBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(
-                          color: Theme.of(context).colorScheme.primary),
-                    ),
-                    focusedBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(
-                          color: Theme.of(context).colorScheme.primary),
-                    ),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscureText ? Icons.visibility : Icons.visibility_off,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          _obscureText = !_obscureText;
-                        });
-                      },
-                    ),
-                  ),
-                  validator: _validatePassword,
-                ),
-                const SizedBox(height: 32.0),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                    minimumSize: Size(constraints.maxWidth / 6, 50.0),
-                  ),
-                  onPressed: _handleSignIn,
-                  child: const Text('Login'),
-                ),
-                const SizedBox(height: 16.0),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    TextButton(
-                      onPressed: () {
-                        // Handle forgot password logic
-                      },
-                      child: const Text('Forgot Password?'),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        // Handle signup logic
-                      },
-                      child: const Text('Signup'),
-                    ),
-                  ],
-                )
-              ],
+              ),
             ),
           ),
-        );
-      }),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required String? Function(String?) validator,
+    required IconData icon,
+    bool obscureText = false,
+    Widget? suffixIcon,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: TextFormField(
+        controller: controller,
+        obscureText: obscureText,
+        style: TextStyle(color: Theme.of(context).colorScheme.onPrimary),
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(
+              color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.7)),
+          prefixIcon:
+              Icon(icon, color: Theme.of(context).colorScheme.onPrimary),
+          suffixIcon: suffixIcon,
+          border: InputBorder.none,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+        ),
+        validator: validator,
+      ),
     );
   }
 }
