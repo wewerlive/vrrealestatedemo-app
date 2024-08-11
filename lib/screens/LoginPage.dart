@@ -1,5 +1,5 @@
-import 'dart:convert';
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -87,44 +87,44 @@ class _LoginPageState extends State<LoginPage> {
         return;
       }
 
-      // try {
-      //   final response = await http
-      //       .post(
-      //         Uri.parse(dotenv.env['API_URL']!),
-      //         headers: <String, String>{
-      //           'Content-Type': 'application/json; charset=UTF-8',
-      //         },
-      //         body: jsonEncode(<String, String>{
-      //           'email': email,
-      //           'password': password,
-      //         }),
-      //       )
-      //       .timeout(const Duration(seconds: 60)); // Set timeout duration
+      try {
+        final response = await http
+            .post(
+              Uri.parse(dotenv.env['API_URL']!),
+              headers: <String, String>{
+                'Content-Type': 'application/json; charset=UTF-8',
+              },
+              body: jsonEncode(<String, String>{
+                'email': email,
+                'password': password,
+              }),
+            )
+            .timeout(const Duration(seconds: 60)); // Set timeout duration
 
-      //   if (response.statusCode == 200) {
-      //     // Store credentials securely
-      //     await _secureStorage.write(key: 'email', value: email);
-      //     await _secureStorage.write(key: 'password', value: password);
+        if (response.statusCode == 200) {
+          // Store credentials securely
+          await _secureStorage.write(key: 'email', value: email);
+          await _secureStorage.write(key: 'password', value: password);
 
-      //     _showSnackBar('Login successful');
-      //     Navigator.pushReplacement(
-      //       context,
-      //       MaterialPageRoute(builder: (context) => const DevicesPage()),
-      //     );
-      //   } else if (response.statusCode == 401) {
-      //     _showSnackBar('Unauthorized. Please check your credentials.');
-      //   } else if (response.statusCode == 500) {
-      //     _showSnackBar('Server error. Please try again later.');
-      //   } else {
-      //     _showSnackBar('An error occurred. Please try again.');
-      //   }
-      // } on http.ClientException {
-      //   _showSnackBar('Network error. Please try again.');
-      // } on TimeoutException {
-      //   _showSnackBar('Request timed out. Please try again.');
-      // } catch (e) {
-      //   _showSnackBar('An error occurred. Please try again.');
-      // }
+          _showSnackBar('Login successful');
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const DevicesPage()),
+          );
+        } else if (response.statusCode == 401) {
+          _showSnackBar('Unauthorized. Please check your credentials.');
+        } else if (response.statusCode == 500) {
+          _showSnackBar('Server error. Please try again later.');
+        } else {
+          _showSnackBar('An error occurred. Please try again.');
+        }
+      } on http.ClientException {
+        _showSnackBar('Network error. Please try again.');
+      } on TimeoutException {
+        _showSnackBar('Request timed out. Please try again.');
+      } catch (e) {
+        _showSnackBar('An error occurred. Please try again.');
+      }
     }
   }
 
