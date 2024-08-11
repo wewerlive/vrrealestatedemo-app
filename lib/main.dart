@@ -33,7 +33,7 @@ class MyApp extends StatelessWidget {
           surface: const Color(0xFFFFFFFF), // Surface color
           error: Colors.red, // Error color
           onPrimary: Colors.white, // Text color on primary
-          onSecondary: Colors.black, // Text color on secondary
+          onSecondary: Colors.green, // Text color on secondary
           onSurface: Colors.black, // Text color on surface
           onBackground: Colors.black, // Text color on background
         ),
