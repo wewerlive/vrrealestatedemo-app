@@ -3,75 +3,67 @@ import 'package:flutter/material.dart';
 class EstatesPage extends StatefulWidget {
   final String deviceID;
 
-  const EstatesPage({Key? key, required this.deviceID}) : super(key: key);
+  const EstatesPage({super.key, required this.deviceID});
 
   @override
   _EstatesPageState createState() => _EstatesPageState();
 }
 
 class _EstatesPageState extends State<EstatesPage> {
-  final List<Map<String, dynamic>> estates = [
+  final List<Map<String, Object>> estates = [
     {
       'estateName': 'Estate 1',
       'estateID': 'EST001',
-      'scenes': ['Living Room', 'Kitchen', 'Bedroom'],
-      'status': 'Active'
+      'scenes': [
+        {
+          'sceneName': 'Living Room',
+          'imageUrl': 'assets/estate.jpg',
+        },
+        {'sceneName': 'Kitchen', 'imageUrl': 'assets/estate.jpg'},
+        {'sceneName': 'Bedroom', 'imageUrl': 'assets/estate.jpg'}
+      ],
+      'status': 'Available'
     },
     {
       'estateName': 'Estate 2',
       'estateID': 'EST002',
-      'scenes': ['Office', 'Dining Room'],
-      'status': 'Inactive'
-    },
-    {
-      'estateName': 'Estate 3',
-      'estateID': 'EST003',
-      'scenes': ['Garden', 'Garage', 'Pool'],
-      'status': 'Active'
-    },
-    {
-      'estateName': 'Estate 4',
-      'estateID': 'EST004',
-      'scenes': ['Basement', 'Attic'],
-      'status': 'Inactive'
-    },
-    {
-      'estateName': 'Estate 5',
-      'estateID': 'EST005',
-      'scenes': ['Patio', 'Balcony'],
-      'status': 'Active'
-    },
-    {
-      'estateName': 'Estate 6',
-      'estateID': 'EST006',
-      'scenes': ['Guest Room', 'Home Theater'],
-      'status': 'Inactive'
-    },
-    {
-      'estateName': 'Estate 7',
-      'estateID': 'EST007',
-      'scenes': ['Gym', 'Library'],
-      'status': 'Active'
-    },
-    {
-      'estateName': 'Estate 8',
-      'estateID': 'EST008',
-      'scenes': ['Laundry Room', 'Mudroom'],
-      'status': 'Inactive'
-    },
-    {
-      'estateName': 'Estate 9',
-      'estateID': 'EST009',
-      'scenes': ['Nursery', 'Playroom'],
-      'status': 'Active'
-    },
-    {
-      'estateName': 'Estate 10',
-      'estateID': 'EST010',
-      'scenes': ['Study', 'Workshop'],
-      'status': 'Inactive'
+      'scenes': [
+        {'sceneName': 'Office', 'imageUrl': 'assets/estate.jpg'},
+        {'sceneName': 'Dining Room', 'imageUrl': 'assets/estate.jpg'}
+      ],
+      'status': 'Unavailable'
     },
   ];
+
+  void _showScenesCarousel(
+      BuildContext context, List<Map<String, Object>> scenes) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          child: SizedBox(
+            width: MediaQuery.of(context).size.width * 0.8,
+            height: MediaQuery.of(context).size.height * 0.6,
+            child: Column(
+              children: [
+                Expanded(
+                  child: CarouselView(
+                    padding: const EdgeInsets.all(25.0),
+                    elevation: 6.0,
+                    itemSnapping: true,
+                    itemExtent: MediaQuery.of(context).size.width * 0.6,
+                    shrinkExtent: MediaQuery.of(context).size.width * 0.6,
+                    children:
+                        scenes.map((scene) => _buildSceneCard(scene)).toList(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -173,12 +165,13 @@ class _EstatesPageState extends State<EstatesPage> {
                         crossAxisCount: crossAxisCount,
                         crossAxisSpacing: 16,
                         mainAxisSpacing: 16,
-                        childAspectRatio: cardWidth / (cardWidth * 0.9),
+                        childAspectRatio: cardWidth / (cardWidth * 0.75),
                       ),
                       itemCount: estates.length,
                       itemBuilder: (context, index) {
                         final estate = estates[index];
-                        return _buildEstateCard(estate, theme, cardWidth);
+                        return _buildEstateCard(
+                            estate, theme, cardWidth, index);
                       },
                     ),
                   );
@@ -188,15 +181,14 @@ class _EstatesPageState extends State<EstatesPage> {
                 left: 0,
                 right: 0,
                 bottom: 0,
-                height:
-                    100, // Adjust this value to control the height of the gradient
+                height: 100,
                 child: Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.bottomCenter,
                       end: Alignment.topCenter,
                       colors: [
-                        theme.colorScheme.onSurface.withOpacity(1),
+                        theme.colorScheme.onSurface.withOpacity(0.9),
                         theme.colorScheme.onSurface.withOpacity(0),
                       ],
                     ),
@@ -210,83 +202,154 @@ class _EstatesPageState extends State<EstatesPage> {
     );
   }
 
-  Widget _buildEstateCard(
-      Map<String, dynamic> estate, ThemeData theme, double cardWidth) {
-    return Card(
-      elevation: 8.0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-      ),
-      color: theme.colorScheme.surface.withOpacity(0.8),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            Icon(
-              Icons.home_work,
-              size: cardWidth * 0.2,
-              color: theme.colorScheme.secondary,
-            ),
-            Text(
-              estate['estateName'],
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: theme.colorScheme.onSurface,
+  Widget _buildEstateCard(Map<String, Object> estate, ThemeData theme,
+      double cardWidth, int index) {
+    const Color primaryContainer = Color(0xFF998AE9);
+
+    return GestureDetector(
+      onTap: () {
+        _showScenesCarousel(
+            context, estate['scenes'] as List<Map<String, Object>>);
+      },
+      child: Card(
+        elevation: 6.0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            image: DecorationImage(
+              image: AssetImage((estate['scenes']
+                  as List<Map<String, Object>>)[0]['imageUrl'] as String),
+              fit: BoxFit.cover,
+              colorFilter: ColorFilter.mode(
+                primaryContainer.withOpacity(0.6),
+                BlendMode.lighten,
               ),
-              textAlign: TextAlign.center,
-              overflow: TextOverflow.ellipsis,
             ),
-            Text(
-              estate['estateID'],
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.7),
-              ),
-              textAlign: TextAlign.center,
-              overflow: TextOverflow.ellipsis,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: primaryContainer.withOpacity(0.9),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: primaryContainer.withOpacity(0.4),
+                            spreadRadius: 3,
+                            blurRadius: 4,
+                            offset: const Offset(0, 1.8),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.home_work,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            estate['estateName'] as String,
+                            style: theme.textTheme.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.normal,
+                              color: Colors.grey[900],
+                              shadows: [
+                                Shadow(
+                                  blurRadius: 2.0,
+                                  color: Colors.black.withOpacity(0.3),
+                                  offset: const Offset(1, 1),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Text(
+                            estate['estateID'] as String,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: Colors.grey.shade600.withOpacity(0.8),
+                              shadows: [
+                                Shadow(
+                                  blurRadius: 2.0,
+                                  color: Colors.black.withOpacity(0.3),
+                                  offset: const Offset(1, 1),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _buildStatusChip(estate['status'] as String, theme,
+                    primaryContainer, index, estate),
+                const Spacer(),
+                _buildScenesChips(
+                    estate['scenes'] as List<Map<String, Object>>, theme),
+              ],
             ),
-            _buildStatusChip(estate['status'], theme),
-            const SizedBox(height: 8),
-            _buildScenesChips(estate['scenes'], theme),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildStatusChip(String status, ThemeData theme) {
+  Widget _buildStatusChip(String status, ThemeData theme,
+      Color primaryContainer, int index, Map<String, Object> estate) {
     Color chipColor;
     IconData iconData;
 
     switch (status) {
-      case 'Active':
-        chipColor = theme.colorScheme.secondary;
+      case 'Available':
+        chipColor = theme.colorScheme.onSecondary;
         iconData = Icons.check_circle;
         break;
-      case 'Inactive':
+      case 'Unavailable':
         chipColor = theme.colorScheme.error;
         iconData = Icons.error;
         break;
       default:
-        chipColor = theme.colorScheme.primary;
+        chipColor = primaryContainer;
         iconData = Icons.sync;
     }
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: chipColor,
-        borderRadius: BorderRadius.circular(8),
+        color: chipColor.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: chipColor.withOpacity(0.4),
+            spreadRadius: 3,
+            blurRadius: 4,
+            offset: const Offset(0, 1.8),
+          ),
+        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(iconData, color: theme.colorScheme.onSecondary, size: 16),
+          Icon(iconData, color: Colors.white, size: 16),
           const SizedBox(width: 6),
           Text(
             status,
             style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSecondary,
+              color: Colors.white,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -295,14 +358,14 @@ class _EstatesPageState extends State<EstatesPage> {
     );
   }
 
-  Widget _buildScenesChips(List<String> scenes, ThemeData theme) {
+  Widget _buildScenesChips(List<Map<String, Object>> scenes, ThemeData theme) {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children: scenes
           .map((scene) => Chip(
                 label: Text(
-                  scene,
+                  scene['sceneName'] as String,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onPrimary,
                   ),
@@ -310,6 +373,81 @@ class _EstatesPageState extends State<EstatesPage> {
                 backgroundColor: theme.colorScheme.primary.withOpacity(0.7),
               ))
           .toList(),
+    );
+  }
+
+  Widget _buildSceneCard(Map<String, Object> scene) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 5.0),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20.0),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3),
+            spreadRadius: 2,
+            blurRadius: 5,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20.0),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset(
+              scene['imageUrl'] as String,
+              fit: BoxFit.cover,
+            ),
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.black.withOpacity(0.7),
+                  ],
+                ),
+              ),
+            ),
+            Positioned(
+              left: 16,
+              right: 16,
+              bottom: 16,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    scene['sceneName'] as String,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      shadows: [
+                        Shadow(
+                          blurRadius: 3.0,
+                          color: Colors.black,
+                          offset: Offset(1.0, 1.0),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Tap to explore',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 16,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
