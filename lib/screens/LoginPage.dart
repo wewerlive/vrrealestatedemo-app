@@ -23,6 +23,22 @@ class _LoginPageState extends State<LoginPage> {
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
   bool _obscureText = true;
 
+  @override
+  void initState() {
+    super.initState();
+    _checkExistingLogin();
+  }
+
+  Future<void> _checkExistingLogin() async {
+    final token = await _secureStorage.read(key: 'auth_token');
+    if (token != null) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const DevicesPage()),
+      );
+    }
+  }
+
   String? _validateEmail(String? value) {
     if (value == null || value.isEmpty) {
       return 'Please enter your email';
@@ -70,11 +86,6 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _handleSignIn() async {
     if (_formKey.currentState!.validate()) {
-      _showSnackBar('Login successful');
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const DevicesPage()),
-      );
 
       final email = _emailController.text;
       final password = _passwordController.text;
@@ -90,7 +101,7 @@ class _LoginPageState extends State<LoginPage> {
       try {
         final response = await http
             .post(
-              Uri.parse(dotenv.env['API_URL']!),
+              Uri.parse(dotenv.env['LOGIN_URL']!),
               headers: <String, String>{
                 'Content-Type': 'application/json; charset=UTF-8',
               },
@@ -102,9 +113,10 @@ class _LoginPageState extends State<LoginPage> {
             .timeout(const Duration(seconds: 60)); // Set timeout duration
 
         if (response.statusCode == 200) {
-          // Store credentials securely
-          await _secureStorage.write(key: 'email', value: email);
-          await _secureStorage.write(key: 'password', value: password);
+          final responseData = jsonDecode(response.body);
+          final token = responseData['token'];
+
+          await _secureStorage.write(key: 'auth_token', value: token);
 
           _showSnackBar('Login successful');
           Navigator.pushReplacement(

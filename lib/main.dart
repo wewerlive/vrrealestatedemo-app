@@ -1,15 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:vrrealstatedemo/screens/DevicesPage.dart';
+
 import 'package:vrrealstatedemo/screens/LoginPage.dart';
 
-void main() {
-  WidgetsFlutterBinding.ensureInitialized();
+Future<void> main() async {
+  WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       systemNavigationBarColor: Colors.transparent,
     ),
   );
+  await dotenv.load(fileName: ".env");
 
   runApp(const MyApp());
 }
@@ -48,7 +55,33 @@ class MyApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const LoginPage(),
+      home: const Init(),
+    );
+  }
+}
+
+class Init extends StatelessWidget {
+  const Init({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<String?>(
+      future: const FlutterSecureStorage().read(key: 'auth_token'),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.done) {
+          if (snapshot.data != null) {
+            return const DevicesPage();
+          } else {
+            return const LoginPage();
+          }
+        }
+        return StyledCircularProgressIndicator(
+          size: 80.0,
+          strokeWidth: 8.0,
+          backgroundColor: Colors.grey,
+          valueColor: Theme.of(context).colorScheme.secondary,
+        );
+      },
     );
   }
 }
