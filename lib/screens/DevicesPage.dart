@@ -3,8 +3,10 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:vrrealstatedemo/screens/EstatesPage.dart';
+import 'package:vrrealstatedemo/screens/LoginPage.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
 class DevicesPage extends StatefulWidget {
@@ -94,6 +96,15 @@ class _DevicesPageState extends State<DevicesPage> {
     );
   }
 
+  Future<void> _handleLogout(BuildContext context) async {
+    const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
+    await _secureStorage.delete(key: 'auth_token');
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const LoginPage()),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -134,11 +145,9 @@ class _DevicesPageState extends State<DevicesPage> {
             },
           ),
           IconButton(
-            icon: Icon(Icons.settings,
+            icon: Icon(Icons.logout_outlined,
                 color: Theme.of(context).colorScheme.onPrimary),
-            onPressed: () {
-              // Add action for settings button
-            },
+            onPressed: () => _handleLogout(context),
           ),
         ],
         flexibleSpace: Container(
