@@ -3,7 +3,6 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
@@ -86,7 +85,6 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _handleSignIn() async {
     if (_formKey.currentState!.validate()) {
-
       final email = _emailController.text;
       final password = _passwordController.text;
 
@@ -101,7 +99,7 @@ class _LoginPageState extends State<LoginPage> {
       try {
         final response = await http
             .post(
-              Uri.parse(dotenv.env['LOGIN_URL']!),
+              Uri.parse('http://<ip-address>:8080/auth/login'),
               headers: <String, String>{
                 'Content-Type': 'application/json; charset=UTF-8',
               },
@@ -175,21 +173,31 @@ class _LoginPageState extends State<LoginPage> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: <Widget>[
                         SizedBox(height: size.height * 0.05),
-                        Icon(
-                          Icons.vrpano_outlined,
-                          size: size.width * 0.25,
-                          color: theme.colorScheme.onPrimary,
+                        Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Container(
+                              width: size.width * 0.5,
+                              height: size.width * 0.5,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: theme.colorScheme.secondary
+                                        .withOpacity(0.3),
+                                    blurRadius: 25,
+                                    spreadRadius: 50,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Image.asset(
+                              'assets/app-icon.png',
+                              width: size.width * 0.9,
+                            ),
+                          ],
                         ),
                         SizedBox(height: size.height * 0.03),
-                        Text(
-                          'Welcome to VR Real Estate',
-                          style: theme.textTheme.headlineMedium?.copyWith(
-                            color: theme.colorScheme.onPrimary,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        SizedBox(height: size.height * 0.05),
                         _buildTextField(
                           controller: _emailController,
                           label: 'Email',
@@ -227,6 +235,9 @@ class _LoginPageState extends State<LoginPage> {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(15),
                             ),
+                            shadowColor:
+                                theme.colorScheme.secondary.withOpacity(0.9),
+                            elevation: 10,
                           ),
                           onPressed: _handleSignIn,
                           child: Text(
@@ -290,6 +301,14 @@ class _LoginPageState extends State<LoginPage> {
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.2),
         borderRadius: BorderRadius.circular(15),
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+            blurRadius: 35,
+            spreadRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
       ),
       child: TextFormField(
         controller: controller,
