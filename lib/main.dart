@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:vrrealstatedemo/screens/DevicesPage.dart';
 
 import 'package:vrrealstatedemo/screens/LoginPage.dart';
 
-Future<void> main() async {
+void main() {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
 
@@ -16,7 +15,6 @@ Future<void> main() async {
       systemNavigationBarColor: Colors.transparent,
     ),
   );
-  await dotenv.load(fileName: ".env");
 
   runApp(const MyApp());
 }
@@ -69,18 +67,14 @@ class Init extends StatelessWidget {
       future: const FlutterSecureStorage().read(key: 'auth_token'),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.done) {
+          FlutterNativeSplash.remove();
           if (snapshot.data != null) {
             return const DevicesPage();
           } else {
             return const LoginPage();
           }
         }
-        return StyledCircularProgressIndicator(
-          size: 80.0,
-          strokeWidth: 8.0,
-          backgroundColor: Colors.grey,
-          valueColor: Theme.of(context).colorScheme.secondary,
-        );
+        return const CircularProgressIndicator();
       },
     );
   }
