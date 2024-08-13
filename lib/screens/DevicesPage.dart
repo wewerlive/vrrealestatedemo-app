@@ -17,13 +17,8 @@ class DevicesPage extends StatefulWidget {
 }
 
 class _DevicesPageState extends State<DevicesPage> {
-  // final List<Map<String, String>> devices = [
-  //   {'deviceName': 'Device 1', 'deviceID': 'ID001', 'status': 'Inactive'},
-  //   {'deviceName': 'Device 2', 'deviceID': 'ID002', 'status': 'Active'},
-  // ];
-
+  List<Map<String, dynamic>> devices = [];
   bool isLoading = false;
-  List<Map<String, String>> devices = [];
 
   @override
   void initState() {
@@ -37,14 +32,23 @@ class _DevicesPageState extends State<DevicesPage> {
     });
 
     try {
-      final response = await http.get(Uri.parse(dotenv.env['API_URL']!));
+      final response =
+          await http.get(Uri.parse('http://<ip-address>:8080/data/devices'));
       if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        setState(() {
-          devices = data.map((item) => Map<String, String>.from(item)).toList();
-          isLoading = false;
-        });
-        _showSnackBar('Devices loaded successfully', isError: false);
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        if (responseData.containsKey('devices') &&
+            responseData['devices'] is List) {
+          final List<dynamic> devicesData = responseData['devices'];
+          setState(() {
+            devices = devicesData
+                .map((item) => Map<String, dynamic>.from(item))
+                .toList();
+            isLoading = false;
+          });
+          _showSnackBar('Devices loaded successfully', isError: false);
+        } else {
+          throw const FormatException('Unexpected data format');
+        }
       } else {
         throw HttpException('Failed to load devices: ${response.statusCode}');
       }
@@ -89,8 +93,8 @@ class _DevicesPageState extends State<DevicesPage> {
   }
 
   Future<void> _handleLogout(BuildContext context) async {
-    const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
-    await _secureStorage.delete(key: 'auth_token');
+    const FlutterSecureStorage secureStorage = FlutterSecureStorage();
+    await secureStorage.delete(key: 'auth_token');
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => const LoginPage()),
@@ -243,7 +247,7 @@ class _DevicesPageState extends State<DevicesPage> {
     );
   }
 
-  Widget _buildDeviceCard(Map<String, String> device, ThemeData theme,
+  Widget _buildDeviceCard(Map<String, dynamic> device, ThemeData theme,
       double cardWidth, int index) {
     const Color primaryContainer = Color(0xFF998AE9);
 
@@ -367,16 +371,16 @@ class _DevicesPageState extends State<DevicesPage> {
   }
 
   Widget _buildStatusChip(String status, ThemeData theme,
-      Color primaryContainer, int index, Map<String, String> device) {
+      Color primaryContainer, int index, Map<String, dynamic> device) {
     Color chipColor;
     IconData iconData;
 
     switch (status) {
-      case 'Active':
+      case 'Online':
         chipColor = theme.colorScheme.onSecondary;
         iconData = Icons.check_circle;
         break;
-      case 'Inactive':
+      case 'Offline':
         chipColor = theme.colorScheme.error;
         iconData = Icons.error;
         break;
@@ -392,14 +396,29 @@ class _DevicesPageState extends State<DevicesPage> {
         });
         Future.delayed(const Duration(seconds: 2), () {
           setState(() {
-            devices[index]['status'] = 'Active';
+            devices[index]['status'] = 'Online';
           });
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => EstatesPage(deviceID: device['deviceID']!),
-            ),
-          );
+        }).whenComplete(() {
+          if (device['status'] == 'Online') {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Device is online'),
+              ),
+            );
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) =>
+                    EstatesPage(deviceID: device['deviceID']!),
+              ),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Failed to connect to device'),
+              ),
+            );
+          }
         });
 
         // final channel = WebSocketChannel.connect(

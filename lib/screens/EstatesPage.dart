@@ -1,4 +1,48 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+
+class Estate {
+  final String estateName;
+  final String estateID;
+  final List<Scene> scenes;
+  final String status;
+
+  Estate({
+    required this.estateName,
+    required this.estateID,
+    required this.scenes,
+    required this.status,
+  });
+
+  factory Estate.fromJson(Map<String, dynamic> json) {
+    return Estate(
+      estateName: json['estateName'] ?? '',
+      estateID: json['estateID'] ?? '',
+      scenes: (json['scenes'] as List<dynamic>?)
+              ?.map((scene) => Scene.fromJson(scene))
+              .toList() ??
+          [],
+      status: json['status'] ?? '',
+    );
+  }
+}
+
+class Scene {
+  final String id;
+  final String sceneName;
+  final String imageUrl;
+
+  Scene({required this.id, required this.sceneName, required this.imageUrl});
+
+  factory Scene.fromJson(Map<String, dynamic> json) {
+    return Scene(
+      id: json['id'] ?? '',
+      sceneName: json['sceneName'] ?? '',
+      imageUrl: json['imageUrl'] ?? '',
+    );
+  }
+}
 
 class EstatesPage extends StatefulWidget {
   final String deviceID;
@@ -10,33 +54,51 @@ class EstatesPage extends StatefulWidget {
 }
 
 class _EstatesPageState extends State<EstatesPage> {
-  final List<Map<String, Object>> estates = [
-    {
-      'estateName': 'Estate 1',
-      'estateID': 'EST001',
-      'scenes': [
-        {
-          'sceneName': 'Living Room',
-          'imageUrl': 'assets/estate.jpg',
-        },
-        {'sceneName': 'Kitchen', 'imageUrl': 'assets/estate.jpg'},
-        {'sceneName': 'Bedroom', 'imageUrl': 'assets/estate.jpg'}
-      ],
-      'status': 'Available'
-    },
-    {
-      'estateName': 'Estate 2',
-      'estateID': 'EST002',
-      'scenes': [
-        {'sceneName': 'Office', 'imageUrl': 'assets/estate.jpg'},
-        {'sceneName': 'Dining Room', 'imageUrl': 'assets/estate.jpg'}
-      ],
-      'status': 'Unavailable'
-    },
-  ];
+  List<Estate> estates = [];
+  bool isLoading = false;
 
-  void _showScenesCarousel(
-      BuildContext context, List<Map<String, Object>> scenes) {
+  @override
+  void initState() {
+    super.initState();
+    fetchEstates();
+  }
+
+  Future<void> fetchEstates() async {
+    setState(() {
+      isLoading = true;
+    });
+
+    try {
+      final response = await http.get(Uri.parse(
+          'http://<ip-address>:8080/data/projects?deviceID=${widget.deviceID}'));
+
+      if (response.statusCode == 200) {
+        final List<dynamic> estatesJson = json.decode(response.body)['estates'];
+        setState(() {
+          estates = estatesJson.map((json) => Estate.fromJson(json)).toList();
+          isLoading = false;
+        });
+      } else {
+        throw Exception('Failed to load estates');
+      }
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+      });
+      _showErrorSnackBar('Failed to fetch estates: ${e.toString()}');
+    }
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+
+  void _showScenesCarousel(BuildContext context, List<Scene> scenes) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -128,88 +190,94 @@ class _EstatesPageState extends State<EstatesPage> {
           ),
         ),
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.bottomCenter,
-            end: Alignment.topCenter,
-            colors: [
-              theme.colorScheme.primary,
-              theme.colorScheme.primaryContainer,
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: Stack(
-            children: [
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  double cardWidth;
-                  int crossAxisCount;
-
-                  if (constraints.maxWidth > 1200) {
-                    crossAxisCount = 3;
-                    cardWidth = constraints.maxWidth / 3 - 32;
-                  } else if (constraints.maxWidth > 600) {
-                    crossAxisCount = 2;
-                    cardWidth = constraints.maxWidth / 2 - 24;
-                  } else {
-                    crossAxisCount = 1;
-                    cardWidth = constraints.maxWidth - 16;
-                  }
-
-                  return Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: GridView.builder(
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: crossAxisCount,
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 16,
-                        childAspectRatio: cardWidth / (cardWidth * 0.75),
-                      ),
-                      itemCount: estates.length,
-                      itemBuilder: (context, index) {
-                        final estate = estates[index];
-                        return _buildEstateCard(
-                            estate, theme, cardWidth, index);
-                      },
-                    ),
-                  );
-                },
-              ),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                height: 100,
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.bottomCenter,
-                      end: Alignment.topCenter,
-                      colors: [
-                        theme.colorScheme.onSurface.withOpacity(0.9),
-                        theme.colorScheme.onSurface.withOpacity(0),
-                      ],
-                    ),
-                  ),
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  colors: [
+                    theme.colorScheme.primary,
+                    theme.colorScheme.primaryContainer,
+                  ],
                 ),
               ),
-            ],
-          ),
-        ),
+              child: SafeArea(
+                child: Stack(
+                  children: [
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        double cardWidth;
+                        int crossAxisCount;
+
+                        if (constraints.maxWidth > 1200) {
+                          crossAxisCount = 3;
+                          cardWidth = constraints.maxWidth / 3 - 32;
+                        } else if (constraints.maxWidth > 600) {
+                          crossAxisCount = 2;
+                          cardWidth = constraints.maxWidth / 2 - 24;
+                        } else {
+                          crossAxisCount = 1;
+                          cardWidth = constraints.maxWidth - 16;
+                        }
+
+                        return Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: GridView.builder(
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: crossAxisCount,
+                              crossAxisSpacing: 16,
+                              mainAxisSpacing: 16,
+                              childAspectRatio: cardWidth / (cardWidth * 0.75),
+                            ),
+                            itemCount: estates.length,
+                            itemBuilder: (context, index) {
+                              final estate = estates[index];
+                              return _buildEstateCard(
+                                  estate, theme, cardWidth, index);
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      height: 100,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.bottomCenter,
+                            end: Alignment.topCenter,
+                            colors: [
+                              theme.colorScheme.onSurface.withOpacity(0.9),
+                              theme.colorScheme.onSurface.withOpacity(0),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: fetchEstates,
+        child: const Icon(Icons.refresh),
       ),
     );
   }
 
-  Widget _buildEstateCard(Map<String, Object> estate, ThemeData theme,
-      double cardWidth, int index) {
+  Widget _buildEstateCard(
+      Estate estate, ThemeData theme, double cardWidth, int index) {
     const Color primaryContainer = Color(0xFF998AE9);
 
     return GestureDetector(
       onTap: () {
-        _showScenesCarousel(
-            context, estate['scenes'] as List<Map<String, Object>>);
+        _showScenesCarousel(context, estate.scenes);
       },
       child: Card(
         elevation: 6.0,
@@ -220,8 +288,7 @@ class _EstatesPageState extends State<EstatesPage> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             image: DecorationImage(
-              image: AssetImage((estate['scenes']
-                  as List<Map<String, Object>>)[0]['imageUrl'] as String),
+              image: AssetImage(estate.scenes[0].imageUrl),
               fit: BoxFit.cover,
               colorFilter: ColorFilter.mode(
                 primaryContainer.withOpacity(0.6),
@@ -263,7 +330,7 @@ class _EstatesPageState extends State<EstatesPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            estate['estateName'] as String,
+                            estate.estateName,
                             style: theme.textTheme.headlineSmall?.copyWith(
                               fontWeight: FontWeight.normal,
                               color: Colors.grey[900],
@@ -277,7 +344,7 @@ class _EstatesPageState extends State<EstatesPage> {
                             ),
                           ),
                           Text(
-                            estate['estateID'] as String,
+                            estate.estateID,
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: Colors.grey.shade600.withOpacity(0.8),
                               shadows: [
@@ -295,11 +362,10 @@ class _EstatesPageState extends State<EstatesPage> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                _buildStatusChip(estate['status'] as String, theme,
-                    primaryContainer, index, estate),
+                _buildStatusChip(
+                    estate.status, theme, primaryContainer, index, estate),
                 const Spacer(),
-                _buildScenesChips(
-                    estate['scenes'] as List<Map<String, Object>>, theme),
+                _buildScenesChips(estate.scenes, theme),
               ],
             ),
           ),
@@ -309,7 +375,7 @@ class _EstatesPageState extends State<EstatesPage> {
   }
 
   Widget _buildStatusChip(String status, ThemeData theme,
-      Color primaryContainer, int index, Map<String, Object> estate) {
+      Color primaryContainer, int index, Estate estate) {
     Color chipColor;
     IconData iconData;
 
@@ -358,14 +424,14 @@ class _EstatesPageState extends State<EstatesPage> {
     );
   }
 
-  Widget _buildScenesChips(List<Map<String, Object>> scenes, ThemeData theme) {
+  Widget _buildScenesChips(List<Scene> scenes, ThemeData theme) {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children: scenes
           .map((scene) => Chip(
                 label: Text(
-                  scene['sceneName'] as String,
+                  scene.sceneName,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onPrimary,
                   ),
@@ -376,7 +442,7 @@ class _EstatesPageState extends State<EstatesPage> {
     );
   }
 
-  Widget _buildSceneCard(Map<String, Object> scene) {
+  Widget _buildSceneCard(Scene scene) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 5.0),
       decoration: BoxDecoration(
@@ -396,7 +462,7 @@ class _EstatesPageState extends State<EstatesPage> {
           fit: StackFit.expand,
           children: [
             Image.asset(
-              scene['imageUrl'] as String,
+              scene.imageUrl,
               fit: BoxFit.cover,
             ),
             Container(
@@ -419,7 +485,7 @@ class _EstatesPageState extends State<EstatesPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    scene['sceneName'] as String,
+                    scene.sceneName,
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 24,
