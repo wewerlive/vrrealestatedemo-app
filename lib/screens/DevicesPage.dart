@@ -20,14 +20,6 @@ class _DevicesPageState extends State<DevicesPage> {
   // final List<Map<String, String>> devices = [
   //   {'deviceName': 'Device 1', 'deviceID': 'ID001', 'status': 'Inactive'},
   //   {'deviceName': 'Device 2', 'deviceID': 'ID002', 'status': 'Active'},
-  //   {'deviceName': 'Device 3', 'deviceID': 'ID003', 'status': 'Inactive'},
-  //   {'deviceName': 'Device 4', 'deviceID': 'ID004', 'status': 'Active'},
-  //   {'deviceName': 'Device 5', 'deviceID': 'ID005', 'status': 'Inactive'},
-  //   {'deviceName': 'Device 6', 'deviceID': 'ID006', 'status': 'Active'},
-  //   {'deviceName': 'Device 7', 'deviceID': 'ID007', 'status': 'Inactive'},
-  //   {'deviceName': 'Device 8', 'deviceID': 'ID008', 'status': 'Active'},
-  //   {'deviceName': 'Device 9', 'deviceID': 'ID009', 'status': 'Inactive'},
-  //   {'deviceName': 'Device 10', 'deviceID': 'ID010', 'status': 'Active'},
   // ];
 
   bool isLoading = false;
