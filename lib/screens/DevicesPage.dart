@@ -2,12 +2,12 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:http/http.dart' as http;
 import 'package:vrrealstatedemo/screens/EstatesPage.dart';
 import 'package:vrrealstatedemo/screens/LoginPage.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:http/http.dart' as http;
 
 class DevicesPage extends StatefulWidget {
   const DevicesPage({super.key});
@@ -16,54 +16,90 @@ class DevicesPage extends StatefulWidget {
   _DevicesPageState createState() => _DevicesPageState();
 }
 
-class StyledCircularProgressIndicator extends StatelessWidget {
-  final double size;
-  final double strokeWidth;
-  final Color backgroundColor;
-  final Color valueColor;
-
-  const StyledCircularProgressIndicator({
-    super.key,
-    this.size = 50.0,
-    this.strokeWidth = 5.0,
-    this.backgroundColor = Colors.grey,
-    this.valueColor = Colors.blue,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: valueColor.withOpacity(0.3),
-            blurRadius: 10,
-            spreadRadius: 2,
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: EdgeInsets.all(strokeWidth * 2.5),
-        child: Stack(
-          children: [
-            CircularProgressIndicator(
-              strokeWidth: strokeWidth,
-              backgroundColor: backgroundColor,
-              valueColor: AlwaysStoppedAnimation<Color>(valueColor),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _DevicesPageState extends State<DevicesPage> {
   List<Map<String, dynamic>> devices = [];
   bool isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchDevices();
+  }
+
+  Future<void> fetchDevices() async {
+    setState(() {
+      isLoading = true;
+    });
+
+    try {
+      final response =
+          await http.get(Uri.parse('http://<ip-address>:8080/data/devices'));
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        if (responseData.containsKey('devices') &&
+            responseData['devices'] is List) {
+          final List<dynamic> devicesData = responseData['devices'];
+          setState(() {
+            devices = devicesData
+                .map((item) => Map<String, dynamic>.from(item))
+                .toList();
+            isLoading = false;
+          });
+          _showSnackBar('Devices loaded successfully', isError: false);
+        } else {
+          throw const FormatException('Unexpected data format');
+        }
+      } else {
+        throw HttpException('Failed to load devices: ${response.statusCode}');
+      }
+    } on HttpException catch (e) {
+      _handleError('HTTP Error: ${e.message}');
+    } on SocketException catch (_) {
+      _handleError('Network error. Please check your internet connection.');
+    } on FormatException catch (_) {
+      _handleError('Error parsing data. Please try again later.');
+    } catch (e) {
+      _handleError('An unexpected error occurred: $e');
+    }
+  }
+
+  void _handleError(String errorMessage) {
+    print('Error fetching devices: $errorMessage');
+    setState(() {
+      isLoading = true;
+      devices = []; // Clear the devices list in case of an error
+    });
+    _showSnackBar(errorMessage, isError: true);
+  }
+
+  void _showSnackBar(String message, {bool isError = false}) {
+    if (!mounted) return; // Check if the widget is still in the tree
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Colors.red : Colors.green,
+        duration: Duration(seconds: isError ? 5 : 3),
+        action: isError
+            ? SnackBarAction(
+                label: 'Retry',
+                onPressed: () {
+                  fetchDevices(); // Retry fetching devices
+                },
+              )
+            : null,
+      ),
+    );
+  }
+
+  Future<void> _handleLogout(BuildContext context) async {
+    const FlutterSecureStorage secureStorage = FlutterSecureStorage();
+    await secureStorage.delete(key: 'auth_token');
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const LoginPage()),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -208,75 +244,7 @@ class _DevicesPageState extends State<DevicesPage> {
                 ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          final onlineDevice = devices.firstWhere(
-            (device) => device['status'] == 'Online',
-            orElse: () => <String, dynamic>{},
-          );
-
-          if (onlineDevice.isNotEmpty) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) =>
-                    EstatesPage(deviceID: onlineDevice['deviceID']!),
-              ),
-            );
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('No online device available'),
-              ),
-            );
-          }
-        },
-        child: const Icon(Icons.arrow_circle_right),
-      ),
     );
-  }
-
-  Future<void> fetchDevices() async {
-    setState(() {
-      isLoading = true;
-    });
-
-    try {
-      final response = await http.get(Uri.parse(
-          'https://<ip-address>:8080/data/devices'));
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> responseData = json.decode(response.body);
-        if (responseData.containsKey('devices') &&
-            responseData['devices'] is List) {
-          final List<dynamic> devicesData = responseData['devices'];
-          setState(() {
-            devices = devicesData
-                .map((item) => Map<String, dynamic>.from(item))
-                .toList();
-            isLoading = false;
-          });
-          _showSnackBar('Devices loaded successfully', isError: false);
-        } else {
-          throw const FormatException('Unexpected data format');
-        }
-      } else {
-        throw HttpException('Failed to load devices: ${response.statusCode}');
-      }
-    } on HttpException catch (e) {
-      _handleError('HTTP Error: ${e.message}');
-    } on SocketException catch (_) {
-      _handleError('Network error. Please check your internet connection.');
-    } on FormatException catch (_) {
-      _handleError('Error parsing data. Please try again later.');
-    } catch (e) {
-      _handleError('An unexpected error occurred: $e');
-    }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    fetchDevices();
   }
 
   Widget _buildDeviceCard(Map<String, dynamic> device, ThemeData theme,
@@ -431,10 +399,17 @@ class _DevicesPageState extends State<DevicesPage> {
             devices[index]['status'] = 'Online';
           });
         }).whenComplete(() {
-          if (devices[index]['status'] == 'Online') {
+          if (device['status'] == 'Online') {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text('Device is online'),
+              ),
+            );
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) =>
+                    EstatesPage(deviceID: device['deviceID']!),
               ),
             );
           } else {
@@ -480,24 +455,6 @@ class _DevicesPageState extends State<DevicesPage> {
           ],
         ),
       ),
-    );
-  }
-
-  void _handleError(String errorMessage) {
-    print('Error fetching devices: $errorMessage');
-    setState(() {
-      isLoading = true;
-      devices = []; // Clear the devices list in case of an error
-    });
-    _showSnackBar(errorMessage, isError: true);
-  }
-
-  Future<void> _handleLogout(BuildContext context) async {
-    const FlutterSecureStorage secureStorage = FlutterSecureStorage();
-    await secureStorage.delete(key: 'auth_token');
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const LoginPage()),
     );
   }
 
@@ -561,23 +518,48 @@ class _DevicesPageState extends State<DevicesPage> {
       });
     });
   }
+}
 
-  void _showSnackBar(String message, {bool isError = false}) {
-    if (!mounted) return; // Check if the widget is still in the tree
+class StyledCircularProgressIndicator extends StatelessWidget {
+  final double size;
+  final double strokeWidth;
+  final Color backgroundColor;
+  final Color valueColor;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? Colors.red : Colors.green,
-        duration: Duration(seconds: isError ? 5 : 3),
-        action: isError
-            ? SnackBarAction(
-                label: 'Retry',
-                onPressed: () {
-                  fetchDevices(); // Retry fetching devices
-                },
-              )
-            : null,
+  const StyledCircularProgressIndicator({
+    super.key,
+    this.size = 50.0,
+    this.strokeWidth = 5.0,
+    this.backgroundColor = Colors.grey,
+    this.valueColor = Colors.blue,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: valueColor.withOpacity(0.3),
+            blurRadius: 10,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(strokeWidth * 2.5),
+        child: Stack(
+          children: [
+            CircularProgressIndicator(
+              strokeWidth: strokeWidth,
+              backgroundColor: backgroundColor,
+              valueColor: AlwaysStoppedAnimation<Color>(valueColor),
+            ),
+          ],
+        ),
       ),
     );
   }
