@@ -1,6 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:vrrealstatedemo/screens/DevicesPage.dart';
 
 class Estate {
   final String estateName;
@@ -28,6 +30,15 @@ class Estate {
   }
 }
 
+class EstatesPage extends StatefulWidget {
+  final String deviceID;
+
+  const EstatesPage({super.key, required this.deviceID});
+
+  @override
+  _EstatesPageState createState() => _EstatesPageState();
+}
+
 class Scene {
   final String id;
   final String sceneName;
@@ -42,15 +53,6 @@ class Scene {
       imageUrl: json['imageUrl'] ?? '',
     );
   }
-}
-
-class EstatesPage extends StatefulWidget {
-  final String deviceID;
-
-  const EstatesPage({super.key, required this.deviceID});
-
-  @override
-  _EstatesPageState createState() => _EstatesPageState();
 }
 
 class _EstatesPageState extends State<EstatesPage> {
@@ -190,21 +192,28 @@ class _EstatesPageState extends State<EstatesPage> {
           ),
         ),
       ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                  colors: [
-                    theme.colorScheme.primary,
-                    theme.colorScheme.primaryContainer,
-                  ],
-                ),
-              ),
-              child: SafeArea(
-                child: Stack(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.bottomCenter,
+            end: Alignment.topCenter,
+            colors: [
+              theme.colorScheme.primary,
+              theme.colorScheme.primaryContainer,
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: isLoading
+              ? Center(
+                  child: StyledCircularProgressIndicator(
+                    size: 80.0,
+                    strokeWidth: 8.0,
+                    backgroundColor: Colors.grey,
+                    valueColor: Theme.of(context).colorScheme.secondary,
+                  ),
+                )
+              : Stack(
                   children: [
                     LayoutBuilder(
                       builder: (context, constraints) {
@@ -262,8 +271,8 @@ class _EstatesPageState extends State<EstatesPage> {
                     ),
                   ],
                 ),
-              ),
-            ),
+        ),
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: fetchEstates,
         child: const Icon(Icons.refresh),
@@ -374,74 +383,6 @@ class _EstatesPageState extends State<EstatesPage> {
     );
   }
 
-  Widget _buildStatusChip(String status, ThemeData theme,
-      Color primaryContainer, int index, Estate estate) {
-    Color chipColor;
-    IconData iconData;
-
-    switch (status) {
-      case 'Available':
-        chipColor = theme.colorScheme.onSecondary;
-        iconData = Icons.check_circle;
-        break;
-      case 'Unavailable':
-        chipColor = theme.colorScheme.error;
-        iconData = Icons.error;
-        break;
-      default:
-        chipColor = primaryContainer;
-        iconData = Icons.sync;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: chipColor.withOpacity(0.9),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: chipColor.withOpacity(0.4),
-            spreadRadius: 3,
-            blurRadius: 4,
-            offset: const Offset(0, 1.8),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(iconData, color: Colors.white, size: 16),
-          const SizedBox(width: 6),
-          Text(
-            status,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildScenesChips(List<Scene> scenes, ThemeData theme) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: scenes
-          .map((scene) => Chip(
-                label: Text(
-                  scene.sceneName,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onPrimary,
-                  ),
-                ),
-                backgroundColor: theme.colorScheme.primary.withOpacity(0.7),
-              ))
-          .toList(),
-    );
-  }
-
   Widget _buildSceneCard(Scene scene) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 5.0),
@@ -513,6 +454,74 @@ class _EstatesPageState extends State<EstatesPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildScenesChips(List<Scene> scenes, ThemeData theme) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: scenes
+          .map((scene) => Chip(
+                label: Text(
+                  scene.sceneName,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onPrimary,
+                  ),
+                ),
+                backgroundColor: theme.colorScheme.primary.withOpacity(0.7),
+              ))
+          .toList(),
+    );
+  }
+
+  Widget _buildStatusChip(String status, ThemeData theme,
+      Color primaryContainer, int index, Estate estate) {
+    Color chipColor;
+    IconData iconData;
+
+    switch (status) {
+      case 'Available':
+        chipColor = theme.colorScheme.onSecondary;
+        iconData = Icons.check_circle;
+        break;
+      case 'Unavailable':
+        chipColor = theme.colorScheme.error;
+        iconData = Icons.error;
+        break;
+      default:
+        chipColor = primaryContainer;
+        iconData = Icons.sync;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: chipColor.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: chipColor.withOpacity(0.4),
+            spreadRadius: 3,
+            blurRadius: 4,
+            offset: const Offset(0, 1.8),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(iconData, color: Colors.white, size: 16),
+          const SizedBox(width: 6),
+          Text(
+            status,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
       ),
     );
   }
