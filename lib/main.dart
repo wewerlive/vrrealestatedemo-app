@@ -74,7 +74,14 @@ class Init extends StatelessWidget {
             return const LoginPage();
           }
         }
-        return const CircularProgressIndicator();
+        return Center(
+          child: StyledCircularProgressIndicator(
+            size: 80.0,
+            strokeWidth: 8.0,
+            backgroundColor: Colors.grey,
+            valueColor: Theme.of(context).colorScheme.secondary,
+          ),
+        );
       },
     );
   }
