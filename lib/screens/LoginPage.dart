@@ -128,12 +128,10 @@ class _LoginPageState extends State<LoginPage> {
         } else {
           _showSnackBar('An error occurred. Please try again.');
         }
-      } on http.ClientException {
-        _showSnackBar('Network error. Please try again.');
       } on TimeoutException {
         _showSnackBar('Request timed out. Please try again.');
       } catch (e) {
-        _showSnackBar('An error occurred. Please try again.');
+        _showSnackBar('DNS - Socket Exception occurred. Please try again.');
       }
     }
   }
@@ -143,6 +141,7 @@ class _LoginPageState extends State<LoginPage> {
     final mediaQuery = MediaQuery.of(context);
     final theme = Theme.of(context);
     final size = mediaQuery.size;
+    final isWideScreen = size.width > 1024;
 
     return Scaffold(
       body: Container(
@@ -166,125 +165,141 @@ class _LoginPageState extends State<LoginPage> {
               child: IntrinsicHeight(
                 child: Padding(
                   padding: EdgeInsets.symmetric(horizontal: size.width * 0.1),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: <Widget>[
-                        SizedBox(height: size.height * 0.05),
-                        Stack(
-                          alignment: Alignment.center,
+                  child: isWideScreen
+                      ? Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            Container(
-                              width: size.width * 0.5,
-                              height: size.width * 0.5,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: theme.colorScheme.secondary
-                                        .withOpacity(0.3),
-                                    blurRadius: 25,
-                                    spreadRadius: 50,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Image.asset(
-                              'assets/app-icon.png',
-                              width: size.width * 0.9,
-                            ),
+                            Expanded(child: _buildImageStack(size, theme)),
+                            SizedBox(width: size.width * 0.06),
+                            Expanded(child: _buildForm(size, theme)),
+                          ],
+                        )
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            _buildImageStack(size, theme),
+                            SizedBox(height: size.height * 0.03),
+                            _buildForm(size, theme),
                           ],
                         ),
-                        SizedBox(height: size.height * 0.03),
-                        _buildTextField(
-                          controller: _emailController,
-                          label: 'Email',
-                          validator: _validateEmail,
-                          icon: Icons.email,
-                        ),
-                        SizedBox(height: size.height * 0.02),
-                        _buildTextField(
-                          controller: _passwordController,
-                          label: 'Password',
-                          validator: _validatePassword,
-                          icon: Icons.lock,
-                          obscureText: _obscureText,
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscureText
-                                  ? Icons.visibility
-                                  : Icons.visibility_off,
-                              color: theme.colorScheme.onPrimary,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _obscureText = !_obscureText;
-                              });
-                            },
-                          ),
-                        ),
-                        SizedBox(height: size.height * 0.04),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            foregroundColor: theme.colorScheme.primary,
-                            backgroundColor: theme.colorScheme.secondary,
-                            padding: EdgeInsets.symmetric(
-                                vertical: size.height * 0.02),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(15),
-                            ),
-                            shadowColor:
-                                theme.colorScheme.secondary.withOpacity(0.9),
-                            elevation: 10,
-                          ),
-                          onPressed: _handleSignIn,
-                          child: Text(
-                            'Login',
-                            style: theme.textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: size.height * 0.02),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: <Widget>[
-                            TextButton(
-                              onPressed: () {
-                                // Handle forgot password logic
-                              },
-                              child: Text(
-                                'Forgot Password?',
-                                style: theme.textTheme.bodyLarge?.copyWith(
-                                  color: theme.colorScheme.onPrimary,
-                                ),
-                              ),
-                            ),
-                            TextButton(
-                              onPressed: () {
-                                // Handle signup logic
-                              },
-                              child: Text(
-                                'Sign Up',
-                                style: theme.textTheme.bodyLarge?.copyWith(
-                                  color: theme.colorScheme.onPrimary,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: size.height * 0.05),
-                      ],
-                    ),
-                  ),
                 ),
               ),
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildImageStack(Size size, ThemeData theme) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Container(
+          width: size.width * 0.5,
+          height: size.width * 0.5,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: theme.colorScheme.secondary.withOpacity(0.3),
+                blurRadius: 25,
+                spreadRadius: 50,
+              ),
+            ],
+          ),
+        ),
+        Image.asset(
+          'assets/app-icon.png',
+          width: size.width * 0.9,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildForm(Size size, ThemeData theme) {
+    return Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          _buildTextField(
+            controller: _emailController,
+            label: 'Email',
+            validator: _validateEmail,
+            icon: Icons.email,
+          ),
+          SizedBox(height: size.height * 0.02),
+          _buildTextField(
+            controller: _passwordController,
+            label: 'Password',
+            validator: _validatePassword,
+            icon: Icons.lock,
+            obscureText: _obscureText,
+            suffixIcon: IconButton(
+              icon: Icon(
+                _obscureText ? Icons.visibility : Icons.visibility_off,
+                color: theme.colorScheme.onPrimary,
+              ),
+              onPressed: () {
+                setState(() {
+                  _obscureText = !_obscureText;
+                });
+              },
+            ),
+          ),
+          SizedBox(height: size.height * 0.04),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              foregroundColor: theme.colorScheme.primary,
+              backgroundColor: theme.colorScheme.secondary,
+              padding: EdgeInsets.symmetric(vertical: size.height * 0.02),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
+              shadowColor: theme.colorScheme.secondary.withOpacity(0.9),
+              elevation: 10,
+            ),
+            onPressed: _handleSignIn,
+            child: Text(
+              'Login',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          SizedBox(height: size.height * 0.02),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: <Widget>[
+              TextButton(
+                onPressed: () {
+                  // Handle forgot password logic
+                },
+                child: Text(
+                  'Forgot Password?',
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: theme.colorScheme.onPrimary,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  // Handle signup logic
+                },
+                child: Text(
+                  'Sign Up',
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: theme.colorScheme.onPrimary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
