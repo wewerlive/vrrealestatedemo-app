@@ -6,30 +6,89 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
-import 'package:vrrealstatedemo/screens/DevicesPage.dart';
+import 'package:vrrealstatedemo/screens/device_page.dart';
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+  const LoginPage({super.key}); 
 
   @override
-  _LoginPageState createState() => _LoginPageState();
+  State<LoginPage> createState() => _LoginPageState();
 }
+
 
 class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+  late StreamSubscription<List<ConnectivityResult>> _connectivitySubscription;
+  bool _isConnected = false;
   bool _obscureText = true;
 
   @override
   void initState() {
     super.initState();
     _checkExistingLogin();
+    _initializeConnectivity();
   }
+
+  Future<void> _initializeConnectivity() async {
+    await _checkConnectivity();
+    _connectivitySubscription =
+        Connectivity().onConnectivityChanged.listen(_updateConnectionStatus);
+  }
+
+  Future<void> _checkConnectivity() async {
+    final List<ConnectivityResult> connectivityResult =
+        await Connectivity().checkConnectivity();
+    _updateConnectionStatus(connectivityResult);
+  }
+
+  void _updateConnectionStatus(List<ConnectivityResult> result) {
+    setState(() {
+      _isConnected = result.contains(ConnectivityResult.mobile) ||
+          result.contains(ConnectivityResult.wifi) ||
+          result.contains(ConnectivityResult.ethernet) ||
+          result.contains(ConnectivityResult.vpn);
+    });
+
+    if (_isConnected) {
+      _showConnectedSnackBar();
+    } else {
+      _showDisconnectedSnackBar();
+    }
+  }
+
+  void _showConnectedSnackBar() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Connected to the internet'),
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 3),
+      ),
+    );
+  }
+
+  void _showDisconnectedSnackBar() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('No internet connection'),
+        backgroundColor: Colors.red,
+        duration: Duration(seconds: 3),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _connectivitySubscription.cancel();
+    super.dispose();
+  }
+
 
   Future<void> _checkExistingLogin() async {
     final token = await _secureStorage.read(key: 'auth_token');
+    if (!mounted) return;
     if (token != null) {
       Navigator.pushReplacement(
         context,
@@ -88,18 +147,11 @@ class _LoginPageState extends State<LoginPage> {
       final email = _emailController.text;
       final password = _passwordController.text;
 
-      // Check network connectivity
-      var connectivityResult = await Connectivity().checkConnectivity();
-      if (connectivityResult == ConnectivityResult.none) {
-        _showSnackBar(
-            'No internet connection. Please check your network settings.');
-        return;
-      }
-
       try {
         final response = await http
             .post(
-              Uri.parse('http://<ip-address>:8080/auth/login'),
+              Uri.parse(
+                  'https://vrerealestatedemo-backend.globeapp.dev/auth/login'),
               headers: <String, String>{
                 'Content-Type': 'application/json; charset=UTF-8',
               },
@@ -117,6 +169,7 @@ class _LoginPageState extends State<LoginPage> {
           await _secureStorage.write(key: 'auth_token', value: token);
 
           _showSnackBar('Login successful');
+          if (!mounted) return;
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => const DevicesPage()),
