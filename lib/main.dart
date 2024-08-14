@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:vrrealstatedemo/screens/DevicesPage.dart';
 
-import 'package:vrrealstatedemo/screens/LoginPage.dart';
+import 'package:vrrealstatedemo/screens/device_page.dart';
+import 'package:vrrealstatedemo/screens/login_page.dart';
 
 void main() {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
@@ -34,13 +34,11 @@ class MyApp extends StatelessWidget {
           primary: const Color(0xFF2C2747), // Primary color
           primaryContainer: const Color(0xFF998AE9), // Primary color accent
           secondary: const Color(0xFFE0FF63), // Accent color
-          background: const Color(0xFFFFFFFF), // Base color
           surface: const Color(0xFFFFFFFF), // Surface color
           error: Colors.red, // Error color
           onPrimary: Colors.white, // Text color on primary
           onSecondary: Colors.green, // Text color on secondary
           onSurface: Colors.black, // Text color on surface
-          onBackground: Colors.black, // Text color on background
         ),
         textTheme: const TextTheme(
           headlineMedium:
@@ -54,6 +52,10 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       home: const Init(),
+      routes: {
+        '/login': (context) => const LoginPage(),
+        '/devices': (context) => const DevicesPage(),
+      },
     );
   }
 }
