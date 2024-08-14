@@ -29,7 +29,7 @@ class _DevicesPageState extends State<DevicesPage> {
       isLoading = true;
     });
 
-    String? errorMessage;
+    String errorMessage;
 
     try {
       final response = await http.get(Uri.parse(
@@ -43,7 +43,6 @@ class _DevicesPageState extends State<DevicesPage> {
             devices = devicesData
                 .map((item) => Map<String, dynamic>.from(item))
                 .toList();
-            isLoading = false;
           });
           _showSnackBar('Devices loaded successfully', isError: false);
         } else {
@@ -54,14 +53,11 @@ class _DevicesPageState extends State<DevicesPage> {
       }
     } catch (e) {
       errorMessage = 'Failed to fetch devices: ${e.toString()}';
+      _showSnackBar(errorMessage, isError: true);
     } finally {
-      if (mounted) {
-        setState(() {
-          isLoading = true;
-          devices = []; // Clear the devices list in case of an error
-        });
-        _showSnackBar(errorMessage!, isError: true);
-      }
+      setState(() {
+        isLoading = false;
+      });
     }
   }
 
