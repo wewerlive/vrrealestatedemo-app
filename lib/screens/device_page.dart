@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:vrrealstatedemo/screens/estate_page.dart';
@@ -17,6 +18,7 @@ class DevicesPage extends StatefulWidget {
 class _DevicesPageState extends State<DevicesPage> {
   List<Map<String, dynamic>> devices = [];
   bool isLoading = false;
+  WebSocketChannel? _channel;
 
   @override
   void initState() {
@@ -79,6 +81,37 @@ class _DevicesPageState extends State<DevicesPage> {
             : null,
       ),
     );
+  }
+
+  void _connectWebSocket(String deviceId) {
+    _channel?.sink.close();
+
+    _channel = WebSocketChannel.connect(
+      Uri.parse('wss://vrerealestatedemo-backend.globeapp.dev/server/socket'),
+    );
+    _channel!.stream.listen(_handleWebSocketMessage);
+    _channel!.sink.add('id:$deviceId');
+  }
+
+  void _handleWebSocketMessage(dynamic message) {
+    final parts = message.toString().split(':');
+    if (parts.length == 2 && parts[0] == 'status') {
+      final deviceId = parts[1].split(',')[0];
+      final newStatus = parts[1].split(',')[1];
+      setState(() {
+        final deviceIndex =
+            devices.indexWhere((d) => d['deviceID'] == deviceId);
+        if (deviceIndex != -1) {
+          devices[deviceIndex]['status'] = newStatus;
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _channel?.sink.close();
+    super.dispose();
   }
 
   Future<void> _handleLogout() async {
@@ -359,16 +392,7 @@ class _DevicesPageState extends State<DevicesPage> {
         setState(() {
           devices[index]['status'] = 'Connecting...';
         });
-        Future.delayed(const Duration(seconds: 2), () {
-          if (mounted) {
-            setState(() {
-              devices[index]['status'] = 'Online';
-            });
-            _showSnackBarIfMounted(device['status'] == 'Online'
-                ? 'Device is online'
-                : 'Failed to connect to device');
-          }
-        });
+        _connectWebSocket(device['deviceID']);
       },
       child: Container(
         width: 50,
