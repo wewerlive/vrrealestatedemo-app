@@ -1,14 +1,7 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version tag'
-        required: true
 
 jobs:
   build:
@@ -42,26 +35,3 @@ jobs:
       with:
         name: release-apk
         path: build/app/outputs/flutter-apk/app-release.apk
-
-  release:
-    needs: build-android
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - uses: actions/download-artifact@v4
-      with:
-        name: release-apk
-    - name: Create tag
-      if: github.event_name == 'workflow_dispatch'
-      run: |
-        git config user.name github-actions
-        git config user.email github-actions@github.com
-        git tag ${{ github.event.inputs.version }}
-        git push origin ${{ github.event.inputs.version }}
-    - name: Release
-      uses: softprops/action-gh-release@v2
-      with:
-        files: app-release.apk
-        tag_name: ${{ github.ref_name }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
