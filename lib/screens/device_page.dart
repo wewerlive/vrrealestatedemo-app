@@ -356,14 +356,6 @@ class _DevicesPageState extends State<DevicesPage> {
     );
   }
 
-  void _showSnackBarIfMounted(String message) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
-    }
-  }
-
   Widget _buildStatusChip(
       String status, ThemeData theme, int index, Map<String, dynamic> device) {
     Color iconColor;
