@@ -1,20 +1,19 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_3d_controller/flutter_3d_controller.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
-
 import 'package:vrrealstatedemo/screens/device_page.dart';
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key}); 
+  const LoginPage({super.key});
 
   @override
   State<LoginPage> createState() => _LoginPageState();
 }
-
 
 class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
@@ -28,14 +27,8 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
-    _checkExistingLogin();
     _initializeConnectivity();
-  }
-
-  Future<void> _initializeConnectivity() async {
-    await _checkConnectivity();
-    _connectivitySubscription =
-        Connectivity().onConnectivityChanged.listen(_updateConnectionStatus);
+    _checkExistingLogin();
   }
 
   Future<void> _checkConnectivity() async {
@@ -44,39 +37,10 @@ class _LoginPageState extends State<LoginPage> {
     _updateConnectionStatus(connectivityResult);
   }
 
-  void _updateConnectionStatus(List<ConnectivityResult> result) {
-    setState(() {
-      _isConnected = result.contains(ConnectivityResult.mobile) ||
-          result.contains(ConnectivityResult.wifi) ||
-          result.contains(ConnectivityResult.ethernet) ||
-          result.contains(ConnectivityResult.vpn);
-    });
-
-    if (_isConnected) {
-      _showConnectedSnackBar();
-    } else {
-      _showDisconnectedSnackBar();
-    }
-  }
-
-  void _showConnectedSnackBar() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Connected to the internet'),
-        backgroundColor: Colors.green,
-        duration: Duration(seconds: 3),
-      ),
-    );
-  }
-
-  void _showDisconnectedSnackBar() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('No internet connection'),
-        backgroundColor: Colors.red,
-        duration: Duration(seconds: 3),
-      ),
-    );
+  Future<void> _initializeConnectivity() async {
+    await _checkConnectivity();
+    _connectivitySubscription =
+        Connectivity().onConnectivityChanged.listen(_updateConnectionStatus);
   }
 
   @override
@@ -84,7 +48,6 @@ class _LoginPageState extends State<LoginPage> {
     _connectivitySubscription.cancel();
     super.dispose();
   }
-
 
   Future<void> _checkExistingLogin() async {
     final token = await _secureStorage.read(key: 'auth_token');
@@ -95,51 +58,6 @@ class _LoginPageState extends State<LoginPage> {
         MaterialPageRoute(builder: (context) => const DevicesPage()),
       );
     }
-  }
-
-  String? _validateEmail(String? value) {
-    if (value == null || value.isEmpty) {
-      return 'Please enter your email';
-    }
-    final emailRegex =
-        RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
-    if (!emailRegex.hasMatch(value)) {
-      return 'Please enter a valid email address';
-    }
-    return null;
-  }
-
-  String? _validatePassword(String? value) {
-    if (value == null || value.isEmpty) {
-      return 'Please enter your password';
-    }
-    if (value.length < 8) {
-      return 'Password must be at least 8 characters long';
-    }
-    final hasUppercase = value.contains(RegExp(r'[A-Z]'));
-    final hasLowercase = value.contains(RegExp(r'[a-z]'));
-    final hasDigit = value.contains(RegExp(r'\d'));
-    final hasSpecialCharacter =
-        value.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'));
-    if (!hasUppercase) {
-      return 'Password must contain at least one uppercase letter';
-    }
-    if (!hasLowercase) {
-      return 'Password must contain at least one lowercase letter';
-    }
-    if (!hasDigit) {
-      return 'Password must contain at least one digit';
-    }
-    if (!hasSpecialCharacter) {
-      return 'Password must contain at least one special character';
-    }
-    return null;
-  }
-
-  void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
   }
 
   Future<void> _handleSignIn() async {
@@ -160,13 +78,15 @@ class _LoginPageState extends State<LoginPage> {
                 'password': password,
               }),
             )
-            .timeout(const Duration(seconds: 60)); // Set timeout duration
+            .timeout(const Duration(seconds: 60));
 
         if (response.statusCode == 200) {
           final responseData = jsonDecode(response.body);
           final token = responseData['token'];
+          final id = responseData['userId'];
 
           await _secureStorage.write(key: 'auth_token', value: token);
+          await _secureStorage.write(key: 'user_id', value: id);
 
           _showSnackBar('Login successful');
           if (!mounted) return;
@@ -203,8 +123,9 @@ class _LoginPageState extends State<LoginPage> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              theme.colorScheme.primary,
+              theme.colorScheme.surface,
               theme.colorScheme.primaryContainer,
+              theme.colorScheme.primary,
             ],
           ),
         ),
@@ -242,32 +163,6 @@ class _LoginPageState extends State<LoginPage> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildImageStack(Size size, ThemeData theme) {
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        Container(
-          width: size.width * 0.5,
-          height: size.width * 0.5,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: theme.colorScheme.secondary.withOpacity(0.3),
-                blurRadius: 25,
-                spreadRadius: 50,
-              ),
-            ],
-          ),
-        ),
-        Image.asset(
-          'assets/app-icon.png',
-          width: size.width * 0.9,
-        ),
-      ],
     );
   }
 
@@ -357,6 +252,35 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
+  Widget _buildImageStack(Size size, ThemeData theme) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Container(
+          width: size.width * 0.5,
+          height: size.width * 0.5,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: theme.colorScheme.secondary.withOpacity(0.3),
+                blurRadius: 25,
+                spreadRadius: 50,
+              ),
+            ],
+          ),
+        ),
+        const Flutter3DViewer(
+          src: 'assets/plaza.glb',
+        ),
+        // Image.asset(
+        //   'assets/app-icon.png',
+        //   width: size.width * 0.9,
+        // ),
+      ],
+    );
+  }
+
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
@@ -396,5 +320,85 @@ class _LoginPageState extends State<LoginPage> {
         validator: validator,
       ),
     );
+  }
+
+  void _showConnectedSnackBar() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Connected to the internet'),
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 3),
+      ),
+    );
+  }
+
+  void _showDisconnectedSnackBar() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('No internet connection'),
+        backgroundColor: Colors.red,
+        duration: Duration(seconds: 3),
+      ),
+    );
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  void _updateConnectionStatus(List<ConnectivityResult> result) {
+    setState(() {
+      _isConnected = result.contains(ConnectivityResult.mobile) ||
+          result.contains(ConnectivityResult.wifi) ||
+          result.contains(ConnectivityResult.ethernet) ||
+          result.contains(ConnectivityResult.vpn);
+    });
+
+    if (_isConnected) {
+      _showConnectedSnackBar();
+    } else {
+      _showDisconnectedSnackBar();
+    }
+  }
+
+  String? _validateEmail(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Please enter your email';
+    }
+    final emailRegex =
+        RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+    if (!emailRegex.hasMatch(value)) {
+      return 'Please enter a valid email address';
+    }
+    return null;
+  }
+
+  String? _validatePassword(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Please enter your password';
+    }
+    if (value.length < 8) {
+      return 'Password must be at least 8 characters long';
+    }
+    final hasUppercase = value.contains(RegExp(r'[A-Z]'));
+    final hasLowercase = value.contains(RegExp(r'[a-z]'));
+    final hasDigit = value.contains(RegExp(r'\d'));
+    final hasSpecialCharacter =
+        value.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'));
+    if (!hasUppercase) {
+      return 'Password must contain at least one uppercase letter';
+    }
+    if (!hasLowercase) {
+      return 'Password must contain at least one lowercase letter';
+    }
+    if (!hasDigit) {
+      return 'Password must contain at least one digit';
+    }
+    if (!hasSpecialCharacter) {
+      return 'Password must contain at least one special character';
+    }
+    return null;
   }
 }
