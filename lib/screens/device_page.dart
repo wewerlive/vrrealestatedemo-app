@@ -8,6 +8,29 @@ import 'package:http/http.dart' as http;
 
 import 'package:vrrealstatedemo/screens/estate_page.dart';
 
+class Device {
+  final String deviceId;
+  final String deviceName;
+  String status;
+  List<String> estateIDs;
+
+  Device({
+    required this.deviceId,
+    required this.deviceName,
+    required this.status,
+    required this.estateIDs,
+  });
+
+  factory Device.fromJson(Map<String, dynamic> json) {
+    return Device(
+      deviceId: json['deviceId'],
+      deviceName: json['deviceName'],
+      status: json['status'],
+      estateIDs: List<String>.from(json['estateIDs']),
+    );
+  }
+}
+
 class DevicesPage extends StatefulWidget {
   const DevicesPage({super.key});
 
@@ -16,7 +39,8 @@ class DevicesPage extends StatefulWidget {
 }
 
 class _DevicesPageState extends State<DevicesPage> {
-  List<Map<String, dynamic>> devices = [];
+  List<Device> devices = [];
+  final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
   bool isLoading = false;
   WebSocketChannel? _channel;
 
@@ -31,21 +55,23 @@ class _DevicesPageState extends State<DevicesPage> {
       isLoading = true;
     });
 
+    final id = await secureStorage.read(key: 'user_id');
     String errorMessage;
 
     try {
       final response = await http.get(Uri.parse(
-          'https://vrerealestatedemo-backend.globeapp.dev/data/devices'));
+          'https://vrerealestatedemo-backend.globeapp.dev/admin/ownerships/device?userId=$id'));
+
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
-        if (responseData.containsKey('devices') &&
-            responseData['devices'] is List) {
-          final List<dynamic> devicesData = responseData['devices'];
+        if (responseData.containsKey('assignedDevices') &&
+            responseData['assignedDevices'] is List) {
+          final List<dynamic> devicesData = responseData['assignedDevices'];
           setState(() {
-            devices = devicesData
-                .map((item) => Map<String, dynamic>.from(item))
-                .toList();
+            devices =
+                devicesData.map((device) => Device.fromJson(device)).toList();
           });
+
           _showSnackBar('Devices loaded successfully', isError: false);
         } else {
           throw const FormatException('Unexpected data format');
@@ -63,54 +89,34 @@ class _DevicesPageState extends State<DevicesPage> {
     }
   }
 
-  void _showSnackBar(String message, {bool isError = false}) {
-    if (!mounted) return; // Check if the widget is still in the tree
+  // void _connectWebSocket(String deviceId) {
+  //   _channel?.sink.close();
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? Colors.red : Colors.green,
-        duration: Duration(seconds: isError ? 5 : 3),
-        action: isError
-            ? SnackBarAction(
-                label: 'Retry',
-                onPressed: () {
-                  fetchDevices(); // Retry fetching devices
-                },
-              )
-            : null,
-      ),
-    );
-  }
+  //   _channel = WebSocketChannel.connect(
+  //     Uri.parse('ws://localhost:8080/server/socket'),
+  //   );
+  //   _channel!.stream.listen(_handleWebSocketMessage);
+  //   _channel!.sink.add('id:$deviceId');
+  // }
 
-  void _connectWebSocket(String deviceId) {
-    _channel?.sink.close();
-
-    _channel = WebSocketChannel.connect(
-      Uri.parse('wss://vrerealestatedemo-backend.globeapp.dev/server/socket'),
-    );
-    _channel!.stream.listen(_handleWebSocketMessage);
-    _channel!.sink.add('id:$deviceId');
-  }
-
-  void _handleWebSocketMessage(dynamic message) {
-    final parts = message.toString().split(':');
-    if (parts.length == 2 && parts[0] == 'status') {
-      final deviceId = parts[1].split(',')[0];
-      final newStatus = parts[1].split(',')[1];
-      setState(() {
-        final deviceIndex =
-            devices.indexWhere((d) => d['deviceID'] == deviceId);
-        if (deviceIndex != -1) {
-          devices[deviceIndex]['status'] = newStatus;
-        }
-      });
-    }
-  }
+  // void _handleWebSocketMessage(dynamic message) {
+  //   final parts = message.toString().split(':');
+  //   if (parts.length == 2 && parts[0] == 'status') {
+  //     final deviceId = parts[1].split(',')[0];
+  //     final newStatus = parts[1].split(',')[1];
+  //     setState(() {
+  //       final deviceIndex =
+  //           devices.indexWhere((device) => device.deviceId == deviceId);
+  //       if (deviceIndex != -1) {
+  //         devices[deviceIndex].status = newStatus;
+  //       }
+  //     });
+  //   }
+  // }
 
   @override
   void dispose() {
-    _channel?.sink.close();
+    // _channel?.sink.close();
     super.dispose();
   }
 
@@ -213,9 +219,8 @@ class _DevicesPageState extends State<DevicesPage> {
     );
   }
 
-  Widget _buildDeviceCard(
-      Map<String, dynamic> device, ThemeData theme, int index) {
-    bool isOnline = device['status'] == 'Online';
+  Widget _buildDeviceCard(Device device, ThemeData theme, int index) {
+    bool isOnline = device.status == 'Online';
 
     return Card(
       elevation: 6.0,
@@ -270,7 +275,7 @@ class _DevicesPageState extends State<DevicesPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                device['deviceName'] ?? 'Unknown Device',
+                                device.deviceName,
                                 style: theme.textTheme.headlineSmall?.copyWith(
                                   fontWeight: FontWeight.normal,
                                   color: theme.colorScheme.primary,
@@ -284,7 +289,7 @@ class _DevicesPageState extends State<DevicesPage> {
                                 ),
                               ),
                               Text(
-                                device['deviceID'] ?? 'No ID',
+                                device.deviceId,
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: theme.colorScheme.onSurface
                                       .withOpacity(0.8),
@@ -303,14 +308,14 @@ class _DevicesPageState extends State<DevicesPage> {
                       ],
                     ),
                   ),
-                  if (isOnline)
+                  if (!isOnline)
                     InkWell(
                       onTap: () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) =>
-                                EstatesPage(deviceID: device['deviceID']!),
+                                EstatesPage(deviceID: device.deviceId),
                           ),
                         );
                       },
@@ -345,8 +350,7 @@ class _DevicesPageState extends State<DevicesPage> {
                 ],
               ),
               const SizedBox(height: 16),
-              _buildStatusChip(
-                  device['status'] ?? 'Unknown', theme, index, device),
+              _buildStatusChip(device.status, theme, index, device),
               const SizedBox(height: 16),
               _buildDeviceStats(theme, device),
             ],
@@ -357,7 +361,7 @@ class _DevicesPageState extends State<DevicesPage> {
   }
 
   Widget _buildStatusChip(
-      String status, ThemeData theme, int index, Map<String, dynamic> device) {
+      String status, ThemeData theme, int index, Device device) {
     Color iconColor;
     IconData iconData;
 
@@ -382,9 +386,9 @@ class _DevicesPageState extends State<DevicesPage> {
     return InkWell(
       onTap: () {
         setState(() {
-          devices[index]['status'] = 'Connecting...';
+          devices[index].status = 'Connecting...';
         });
-        _connectWebSocket(device['deviceID']);
+        // _connectWebSocket(device.deviceId);
       },
       child: Container(
         width: 50,
@@ -414,13 +418,13 @@ class _DevicesPageState extends State<DevicesPage> {
     );
   }
 
-  Widget _buildDeviceStats(ThemeData theme, Map<String, dynamic> device) {
+  Widget _buildDeviceStats(ThemeData theme, Device device) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         _buildStatItem(theme, 'Usage', '75%', Icons.pie_chart),
         _buildStatItem(theme, 'Estates',
-            '${(device['estateIDs'] as List?)?.length ?? 0}', Icons.apartment),
+            '${(device.estateIDs as List?)?.length ?? 0}', Icons.apartment),
       ],
     );
   }
@@ -438,7 +442,7 @@ class _DevicesPageState extends State<DevicesPage> {
         const SizedBox(height: 4),
         Row(
           children: [
-            Icon(icon, color: theme.colorScheme.secondary, size: 16),
+            Icon(icon, color: theme.colorScheme.primaryContainer, size: 16),
             const SizedBox(width: 4),
             Text(
               value,
@@ -450,6 +454,26 @@ class _DevicesPageState extends State<DevicesPage> {
           ],
         ),
       ],
+    );
+  }
+
+  void _showSnackBar(String message, {bool isError = false}) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Colors.red : Colors.green,
+        duration: Duration(seconds: isError ? 5 : 3),
+        action: isError
+            ? SnackBarAction(
+                label: 'Retry',
+                onPressed: () {
+                  fetchDevices();
+                },
+              )
+            : null,
+      ),
     );
   }
 }
