@@ -89,34 +89,34 @@ class _DevicesPageState extends State<DevicesPage> {
     }
   }
 
-  // void _connectWebSocket(String deviceId) {
-  //   _channel?.sink.close();
+  void _connectWebSocket(String deviceId) {
+    _channel?.sink.close();
 
-  //   _channel = WebSocketChannel.connect(
-  //     Uri.parse('ws://localhost:8080/server/socket'),
-  //   );
-  //   _channel!.stream.listen(_handleWebSocketMessage);
-  //   _channel!.sink.add('id:$deviceId');
-  // }
+    _channel = WebSocketChannel.connect(
+      Uri.parse('ws://localhost:8080/server/socket'),
+    );
+    _channel!.stream.listen(_handleWebSocketMessage);
+    _channel!.sink.add('id:$deviceId');
+  }
 
-  // void _handleWebSocketMessage(dynamic message) {
-  //   final parts = message.toString().split(':');
-  //   if (parts.length == 2 && parts[0] == 'status') {
-  //     final deviceId = parts[1].split(',')[0];
-  //     final newStatus = parts[1].split(',')[1];
-  //     setState(() {
-  //       final deviceIndex =
-  //           devices.indexWhere((device) => device.deviceId == deviceId);
-  //       if (deviceIndex != -1) {
-  //         devices[deviceIndex].status = newStatus;
-  //       }
-  //     });
-  //   }
-  // }
+  void _handleWebSocketMessage(dynamic message) {
+    final parts = message.toString().split(':');
+    if (parts.length == 2 && parts[0] == 'status') {
+      final deviceId = parts[1].split(',')[0];
+      final newStatus = parts[1].split(',')[1];
+      setState(() {
+        final deviceIndex =
+            devices.indexWhere((device) => device.deviceId == deviceId);
+        if (deviceIndex != -1) {
+          devices[deviceIndex].status = newStatus;
+        }
+      });
+    }
+  }
 
   @override
   void dispose() {
-    // _channel?.sink.close();
+    _channel?.sink.close();
     super.dispose();
   }
 
@@ -191,11 +191,12 @@ class _DevicesPageState extends State<DevicesPage> {
           child: isLoading
               ? Center(
                   child: StyledCircularProgressIndicator(
-                  size: 80.0,
-                  strokeWidth: 8.0,
-                  backgroundColor: Colors.grey,
-                  valueColor: theme.colorScheme.secondary,
-                ))
+                    size: 80.0,
+                    strokeWidth: 8.0,
+                    backgroundColor: Colors.grey,
+                    valueColor: theme.colorScheme.secondary,
+                  ),
+                )
               : _buildDeviceList(theme, isWideScreen),
         ),
       ),
@@ -308,7 +309,7 @@ class _DevicesPageState extends State<DevicesPage> {
                       ],
                     ),
                   ),
-                  if (!isOnline)
+                  if (isOnline)
                     InkWell(
                       onTap: () {
                         Navigator.push(
@@ -388,7 +389,7 @@ class _DevicesPageState extends State<DevicesPage> {
         setState(() {
           devices[index].status = 'Connecting...';
         });
-        // _connectWebSocket(device.deviceId);
+        _connectWebSocket(device.deviceId);
       },
       child: Container(
         width: 50,
