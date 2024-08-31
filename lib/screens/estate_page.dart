@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:vrrealstatedemo/screens/device_page.dart';
+import 'package:vrrealstatedemo/screens/scene_page.dart';
 
 class Estate {
   final String estateName;
@@ -50,14 +51,13 @@ class EstatesPage extends StatefulWidget {
   final String deviceID;
 
   const EstatesPage({
-    super.key, 
+    super.key,
     required this.deviceID,
   });
 
   @override
   State<EstatesPage> createState() => _EstatesPageState();
 }
-
 
 class _EstatesPageState extends State<EstatesPage> {
   List<Estate> estates = [];
@@ -282,7 +282,14 @@ class _EstatesPageState extends State<EstatesPage> {
                 ),
               ),
               if (isExpanded)
-                Expanded(child: _buildCarousel(estate.scenes, theme)),
+                Expanded(
+                  child: _buildCarousel(
+                    estate.scenes,
+                    theme,
+                    estate.estateID,
+                    estate.estateName,
+                  ),
+                ),
             ],
           ),
         ),
@@ -378,7 +385,8 @@ class _EstatesPageState extends State<EstatesPage> {
     );
   }
 
-  Widget _buildCarousel(List<Scene> scenes, ThemeData theme) {
+  Widget _buildCarousel(
+      List<Scene> scenes, ThemeData theme, String estateID, String estateName) {
     return Container(
       decoration: BoxDecoration(
         boxShadow: [
@@ -391,55 +399,72 @@ class _EstatesPageState extends State<EstatesPage> {
         itemBuilder: (context, index) {
           return Padding(
             padding: const EdgeInsets.all(8),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  Image.asset(
-                    scenes[index].imageUrl,
-                    fit: BoxFit.cover,
+            child: GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ScenePage(
+                      currentScene: scenes[index],
+                      allScenes: scenes,
+                      estateID: estateID,
+                      estateName: estateName,
+                      nextScene:
+                          index < scenes.length - 1 ? scenes[index + 1] : null,
+                    ),
                   ),
-                  Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 8, horizontal: 16),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.bottomCenter,
-                          end: Alignment.topCenter,
-                          colors: [
-                            Colors.black.withOpacity(0.9),
-                            Colors.transparent
+                );
+              },
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Image.asset(
+                      scenes[index].imageUrl,
+                      fit: BoxFit.cover,
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 8, horizontal: 16),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.bottomCenter,
+                            end: Alignment.topCenter,
+                            colors: [
+                              Colors.black.withOpacity(0.9),
+                              Colors.transparent
+                            ],
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              scenes[index].sceneName,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              'Tap to explore',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                color: Colors.grey[400],
+                                fontWeight: FontWeight.w400,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
                           ],
                         ),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            scenes[index].sceneName,
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            'Tap to explore',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              color: Colors.grey[400],
-                              fontWeight: FontWeight.w400,
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
-                        ],
-                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           );
