@@ -3,7 +3,6 @@ import 'dart:convert';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_3d_controller/flutter_3d_controller.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:vrrealstatedemo/screens/device_page.dart';
@@ -270,13 +269,10 @@ class _LoginPageState extends State<LoginPage> {
             ],
           ),
         ),
-        const Flutter3DViewer(
-          src: 'assets/plaza.glb',
+        Image.asset(
+          'assets/app-icon.png',
+          width: size.width * 0.9,
         ),
-        // Image.asset(
-        //   'assets/app-icon.png',
-        //   width: size.width * 0.9,
-        // ),
       ],
     );
   }
