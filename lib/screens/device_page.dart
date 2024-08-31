@@ -309,7 +309,7 @@ class _DevicesPageState extends State<DevicesPage> {
                       ],
                     ),
                   ),
-                  if (isOnline)
+                  if (!isOnline)
                     InkWell(
                       onTap: () {
                         Navigator.push(
