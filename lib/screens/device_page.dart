@@ -51,6 +51,10 @@ class _DevicesPageState extends State<DevicesPage> {
   }
 
   Future<void> fetchDevices() async {
+    if (!mounted) {
+      return;
+    }
+
     setState(() {
       isLoading = true;
     });
@@ -61,6 +65,8 @@ class _DevicesPageState extends State<DevicesPage> {
     try {
       final response = await http.get(Uri.parse(
           'https://vrerealestatedemo-backend.globeapp.dev/admin/ownerships/device?userId=$id'));
+
+      if (!mounted) return; // Check again after the async operation
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
@@ -81,11 +87,17 @@ class _DevicesPageState extends State<DevicesPage> {
       }
     } catch (e) {
       errorMessage = 'Failed to fetch devices: ${e.toString()}';
-      _showSnackBar(errorMessage, isError: true);
+      if (mounted) {
+        // Check if still mounted before showing SnackBar
+        _showSnackBar(errorMessage, isError: true);
+      }
     } finally {
-      setState(() {
-        isLoading = false;
-      });
+      if (mounted) {
+        // Check if still mounted before setting state
+        setState(() {
+          isLoading = false;
+        });
+      }
     }
   }
 
@@ -100,6 +112,8 @@ class _DevicesPageState extends State<DevicesPage> {
   }
 
   void _handleWebSocketMessage(dynamic message) {
+    if (!mounted) return;
+
     final parts = message.toString().split(':');
     if (parts.length == 2 && parts[0] == 'status') {
       final deviceId = parts[1].split(',')[0];
