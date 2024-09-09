@@ -205,92 +205,94 @@ class _EstatesPageState extends State<EstatesPage> {
 
   Widget _buildEstateCard(
       Estate estate, ThemeData theme, int index, bool isWideScreen) {
-    bool isExpanded = expandedEstateIndex == index;
-
     return AspectRatio(
       aspectRatio: isWideScreen ? 1 : 0.7,
-      child: Card(
-        elevation: 6.0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            image: DecorationImage(
-              image: AssetImage(estate.scenes.isNotEmpty
-                  ? estate.scenes[0].imageUrl
-                  : 'assets/placeholder.jpg'),
-              fit: BoxFit.cover,
-              colorFilter: ColorFilter.mode(
-                theme.colorScheme.primaryContainer.withOpacity(0.6),
-                BlendMode.lighten,
+      child: GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ScenePage(
+                allScenes: estate.scenes,
+                currentScene:
+                    estate.scenes.isNotEmpty ? estate.scenes[0] : null,
+                estateName: estate.estateName,
+                estateID: estate.estateID,
+                nextScene: estate.scenes.length > 1 ? estate.scenes[1] : null,
               ),
             ),
-          ),
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                estate.estateName,
-                                style: theme.textTheme.headlineSmall?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: theme.colorScheme.primary,
-                                  shadows: [
-                                    Shadow(
-                                      blurRadius: 2.0,
-                                      color: Colors.black.withOpacity(0.3),
-                                      offset: const Offset(1, 1),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Text(
-                                estate.estateID,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.primary
-                                      .withOpacity(0.8),
-                                  shadows: [
-                                    Shadow(
-                                      blurRadius: 2.0,
-                                      color: Colors.black.withOpacity(0.3),
-                                      offset: const Offset(1, 1),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        _buildStatusChip(estate.status, theme),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    _buildSceneChips(estate.scenes, theme, index),
-                  ],
+          );
+        },
+        child: Card(
+          elevation: 6.0,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              image: DecorationImage(
+                image: AssetImage(estate.scenes.isNotEmpty
+                    ? estate.scenes[0].imageUrl
+                    : 'assets/placeholder.jpg'),
+                fit: BoxFit.cover,
+                colorFilter: ColorFilter.mode(
+                  theme.colorScheme.primaryContainer.withOpacity(0.6),
+                  BlendMode.lighten,
                 ),
               ),
-              if (isExpanded)
-                Expanded(
-                  child: _buildCarousel(
-                    estate.scenes,
-                    theme,
-                    estate.estateID,
-                    estate.estateName,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              estate.estateName,
+                              style: theme.textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: theme.colorScheme.primary,
+                                shadows: [
+                                  Shadow(
+                                    blurRadius: 2.0,
+                                    color: Colors.black.withOpacity(0.3),
+                                    offset: const Offset(1, 1),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Text(
+                              estate.estateID,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color:
+                                    theme.colorScheme.primary.withOpacity(0.8),
+                                shadows: [
+                                  Shadow(
+                                    blurRadius: 2.0,
+                                    color: Colors.black.withOpacity(0.3),
+                                    offset: const Offset(1, 1),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      _buildStatusChip(estate.status, theme),
+                    ],
                   ),
-                ),
-            ],
+                  _buildSceneChips(estate.scenes, theme, index),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -345,23 +347,10 @@ class _EstatesPageState extends State<EstatesPage> {
       spacing: 8,
       runSpacing: 8,
       children: [
-        InkWell(
-          onTap: () {
-            setState(() {
-              expandedEstateIndex =
-                  expandedEstateIndex == estateIndex ? null : estateIndex;
-            });
-          },
-          child: Chip(
-            avatar: Icon(
-              expandedEstateIndex == estateIndex
-                  ? Icons.expand_less
-                  : Icons.expand_more,
-              color: theme.colorScheme.surface,
-              size: 18,
-            ),
+        ...scenes.map(
+          (scene) => Chip(
             label: Text(
-              'Scenes (${scenes.length})',
+              scene.sceneName,
               style: TextStyle(
                 color: theme.colorScheme.surface,
                 fontWeight: FontWeight.bold,
@@ -382,94 +371,6 @@ class _EstatesPageState extends State<EstatesPage> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildCarousel(
-      List<Scene> scenes, ThemeData theme, String estateID, String estateName) {
-    return Container(
-      decoration: BoxDecoration(
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 8)
-        ],
-      ),
-      height: 250,
-      child: PageView.builder(
-        itemCount: scenes.length,
-        itemBuilder: (context, index) {
-          return Padding(
-            padding: const EdgeInsets.all(8),
-            child: GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ScenePage(
-                      currentScene: scenes[index],
-                      allScenes: scenes,
-                      estateID: estateID,
-                      estateName: estateName,
-                      nextScene:
-                          index < scenes.length - 1 ? scenes[index + 1] : null,
-                    ),
-                  ),
-                );
-              },
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Image.asset(
-                      scenes[index].imageUrl,
-                      fit: BoxFit.cover,
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 8, horizontal: 16),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.bottomCenter,
-                            end: Alignment.topCenter,
-                            colors: [
-                              Colors.black.withOpacity(0.9),
-                              Colors.transparent
-                            ],
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              scenes[index].sceneName,
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Text(
-                              'Tap to explore',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                color: Colors.grey[400],
-                                fontWeight: FontWeight.w400,
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
-      ),
     );
   }
 }
