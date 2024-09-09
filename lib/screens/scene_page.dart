@@ -3,15 +3,15 @@ import 'package:vrrealstatedemo/screens/estate_page.dart';
 import 'package:flutter/services.dart';
 
 class ScenePage extends StatefulWidget {
-  final Scene currentScene;
   final List<Scene> allScenes;
+  final Scene? currentScene;
+  final String estateName;
   final String estateID;
   final Scene? nextScene;
-  final String estateName;
 
   const ScenePage({
     super.key,
-    required this.currentScene,
+    this.currentScene,
     required this.estateID,
     required this.estateName,
     required this.allScenes,
@@ -41,7 +41,7 @@ class _ScenePageState extends State<ScenePage> {
       body: Stack(
         children: [
           Image.asset(
-            widget.currentScene.imageUrl,
+            widget.currentScene!.imageUrl,
             fit: BoxFit.cover,
             height: double.infinity,
             width: double.infinity,
@@ -77,7 +77,7 @@ class _ScenePageState extends State<ScenePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      widget.currentScene.sceneName,
+                      widget.currentScene!.sceneName,
                       style: const TextStyle(
                           color: Colors.white,
                           fontSize: 16,
@@ -145,55 +145,55 @@ class _ScenePageState extends State<ScenePage> {
         return Dialog(
           child: Container(
             padding: const EdgeInsets.all(10),
-            height: 300,
-            width: double.infinity,
+            height: MediaQuery.of(context).size.height * 0.8,
+            width: MediaQuery.of(context).size.width * 0.8,
             child: CarouselView(
-              // padding: const EdgeInsets.all(20),
-              itemExtent: 550,
-              shrinkExtent: 200,
+              onTap: (int index) {
+                Scene selectedScene = widget.allScenes[index];
+                Scene nextScene = _getNextScene(selectedScene);
+                Navigator.pop(context);
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ScenePage(
+                      allScenes: widget.allScenes,
+                      currentScene: selectedScene,
+                      estateID: widget.estateID,
+                      estateName: widget.estateName,
+                      nextScene: nextScene,
+                    ),
+                  ),
+                );
+              },
+              itemSnapping: true,
+              itemExtent: double.maxFinite,
+              shrinkExtent: 100,
               controller: CarouselController(
-                initialItem: widget.allScenes.indexOf(widget.currentScene),
+                initialItem: widget.currentScene != null
+                    ? widget.allScenes.indexOf(widget.currentScene!)
+                    : 0,
               ),
               children: widget.allScenes.map((scene) {
-                return InkWell(
-                  onTap: () {
-                    // Navigator.of(context).pop();
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ScenePage(
-                          currentScene: scene,
-                          allScenes: widget.allScenes,
-                          estateID: widget.estateID,
-                          estateName: widget.estateName,
-                          nextScene: widget.allScenes[
-                              (widget.allScenes.indexOf(scene) + 1) %
-                                  widget.allScenes.length],
-                        ),
-                      ),
-                    );
-                  },
+                return Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    image: DecorationImage(
+                      image: AssetImage(scene.imageUrl),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
                   child: Container(
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(10),
-                      image: DecorationImage(
-                        image: AssetImage(scene.imageUrl),
-                        fit: BoxFit.cover,
-                      ),
+                      color: Colors.black.withOpacity(0.3),
                     ),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(10),
-                        color: Colors.black.withOpacity(0.3),
-                      ),
-                      child: Center(
-                        child: Text(
-                          scene.sceneName,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
+                    child: Center(
+                      child: Text(
+                        scene.sceneName,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
@@ -205,5 +205,14 @@ class _ScenePageState extends State<ScenePage> {
         );
       },
     );
+  }
+
+  Scene _getNextScene(Scene currentScene) {
+    int currentIndex = widget.allScenes.indexOf(currentScene);
+    if (currentIndex < widget.allScenes.length - 1) {
+      return widget.allScenes[currentIndex + 1];
+    }
+    // If we've reached the end, return the first scene
+    return widget.allScenes[0];
   }
 }
