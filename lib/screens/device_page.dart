@@ -1,12 +1,13 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:vrrealstatedemo/screens/estate_page.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
 
 class Device {
   final String deviceId;
@@ -42,7 +43,7 @@ class _DevicesPageState extends State<DevicesPage> {
   List<Device> devices = [];
   final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
   bool isLoading = false;
-  WebSocketChannel? _channel;
+  Map<String, WebSocketChannel> socketConnections = {};
 
   @override
   void initState() {
@@ -79,6 +80,10 @@ class _DevicesPageState extends State<DevicesPage> {
           });
 
           _showSnackBar('Devices loaded successfully', isError: false);
+          // Initialize WebSocket connections for each device
+          for (var device in devices) {
+            _initWebSocket(device.deviceId);
+          }
         } else {
           throw const FormatException('Unexpected data format');
         }
@@ -101,36 +106,32 @@ class _DevicesPageState extends State<DevicesPage> {
     }
   }
 
-  void _connectWebSocket(String deviceId) {
-    _channel?.sink.close();
+  void _initWebSocket(String deviceId) {
+    final wsUrl = Uri.parse('ws://10.140.0.228:8080/server/socket/$deviceId');
+    socketConnections[deviceId] = WebSocketChannel.connect(wsUrl);
 
-    _channel = WebSocketChannel.connect(
-      Uri.parse('ws://localhost:8080/server/socket'),
-    );
-    _channel!.stream.listen(_handleWebSocketMessage);
-    _channel!.sink.add('id:$deviceId');
-  }
-
-  void _handleWebSocketMessage(dynamic message) {
-    if (!mounted) return;
-
-    final parts = message.toString().split(':');
-    if (parts.length == 2 && parts[0] == 'status') {
-      final deviceId = parts[1].split(',')[0];
-      final newStatus = parts[1].split(',')[1];
-      setState(() {
-        final deviceIndex =
-            devices.indexWhere((device) => device.deviceId == deviceId);
-        if (deviceIndex != -1) {
-          devices[deviceIndex].status = newStatus;
-        }
-      });
-    }
+    socketConnections[deviceId]!.stream.listen((message) {
+      final data = json.decode(message);
+      if (data['deviceId'] == deviceId) {
+        final updatedStatus = data['status'];
+        setState(() {
+          devices.firstWhere((device) => device.deviceId == deviceId).status =
+              updatedStatus;
+        });
+      }
+    }, onError: (error) {
+      _showSnackBar('WebSocket error: $error', isError: true);
+    }, onDone: () {
+      _showSnackBar('Websocket connection closed', isError: false);
+    });
   }
 
   @override
   void dispose() {
-    _channel?.sink.close();
+    // Close all WebSocket connections
+    for (var connection in socketConnections.values) {
+      connection.sink.close();
+    }
     super.dispose();
   }
 
@@ -174,11 +175,9 @@ class _DevicesPageState extends State<DevicesPage> {
         toolbarHeight: kToolbarHeight + 40, // Adjust the toolbar height
         actions: [
           IconButton(
-            icon: Icon(Icons.info_outline,
+            icon: Icon(Icons.support_rounded,
                 color: theme.colorScheme.onPrimary, size: 28),
-            onPressed: () {
-              // Add action for info button
-            },
+            onPressed: () {},
           ),
           Padding(
             padding: const EdgeInsets.all(16.0),
@@ -323,7 +322,7 @@ class _DevicesPageState extends State<DevicesPage> {
                       ],
                     ),
                   ),
-                  if (!isOnline)
+                  if (isOnline)
                     InkWell(
                       onTap: () {
                         Navigator.push(
@@ -389,45 +388,33 @@ class _DevicesPageState extends State<DevicesPage> {
         iconColor = Colors.red;
         iconData = Icons.power_settings_new;
         break;
-      case 'Connecting...':
-        iconColor = Colors.orange;
-        iconData = Icons.sync;
-        break;
       default:
         iconColor = Colors.grey;
-        iconData = Icons.power_settings_new;
+        iconData = Icons.error_outline;
     }
 
-    return InkWell(
-      onTap: () {
-        setState(() {
-          devices[index].status = 'Connecting...';
-        });
-        _connectWebSocket(device.deviceId);
-      },
-      child: Container(
-        width: 50,
-        height: 50,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: iconColor.withOpacity(0.3),
-              spreadRadius: 2,
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 300),
-          child: Icon(
-            iconData,
-            key: ValueKey<String>(status),
-            color: iconColor,
-            size: 32,
+    return Container(
+      width: 50,
+      height: 50,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: iconColor.withOpacity(0.3),
+            spreadRadius: 2,
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
+        ],
+      ),
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 300),
+        child: Icon(
+          iconData,
+          key: ValueKey<String>(status),
+          color: iconColor,
+          size: 32,
         ),
       ),
     );
