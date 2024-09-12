@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:vrrealstatedemo/screens/device_page.dart';
 import 'package:vrrealstatedemo/screens/scene_page.dart';
+import 'package:web_socket_channel/io.dart';
 
 class Estate {
   final String estateName;
@@ -62,12 +63,14 @@ class EstatesPage extends StatefulWidget {
 class _EstatesPageState extends State<EstatesPage> {
   List<Estate> estates = [];
   bool isLoading = false;
-  int? expandedEstateIndex;
+  IOWebSocketChannel? webSocketChannel;
+  String currentScene = '';
 
   @override
   void initState() {
     super.initState();
     fetchEstates();
+    _connectWebSocket();
   }
 
   Future<void> fetchEstates() async {
@@ -103,6 +106,24 @@ class _EstatesPageState extends State<EstatesPage> {
         backgroundColor: Colors.red,
       ),
     );
+  }
+
+  void _connectWebSocket() {
+    webSocketChannel =
+        IOWebSocketChannel.connect('ws://10.140.0.228:8080/server/socket');
+    webSocketChannel?.stream.listen((message) {
+      if (message.startsWith('sceneChanged:')) {
+        setState(() {
+          currentScene = message.split(':')[1];
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    webSocketChannel?.sink.close();
+    super.dispose();
   }
 
   @override
@@ -191,7 +212,7 @@ class _EstatesPageState extends State<EstatesPage> {
       padding: const EdgeInsets.all(16),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: isWideScreen ? 3 : 1,
-        childAspectRatio: isWideScreen ? 1 : 0.7, // Adjusted for mobile screens
+        childAspectRatio: isWideScreen ? 1 : 0.7,
         crossAxisSpacing: 16,
         mainAxisSpacing: 16,
       ),
@@ -209,19 +230,35 @@ class _EstatesPageState extends State<EstatesPage> {
       aspectRatio: isWideScreen ? 1 : 0.7,
       child: GestureDetector(
         onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ScenePage(
-                allScenes: estate.scenes,
-                currentScene:
-                    estate.scenes.isNotEmpty ? estate.scenes[0] : null,
-                estateName: estate.estateName,
-                estateID: estate.estateID,
-                nextScene: estate.scenes.length > 1 ? estate.scenes[1] : null,
-              ),
-            ),
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (BuildContext context) {
+              return const Center(
+                child: CircularProgressIndicator(),
+              );
+            },
           );
+
+          webSocketChannel?.sink.add('s$index');
+
+          Future.delayed(const Duration(seconds: 2), () {
+            if (!mounted) return;
+            Navigator.pop(context); // Close the progress dialog
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ScenePage(
+                  allScenes: estate.scenes,
+                  currentScene:
+                      estate.scenes.isNotEmpty ? estate.scenes[0] : null,
+                  estateName: estate.estateName,
+                  estateID: estate.estateID,
+                  nextScene: estate.scenes.length > 1 ? estate.scenes[1] : null,
+                ),
+              ),
+            );
+          });
         },
         child: Card(
           elevation: 6.0,
