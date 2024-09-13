@@ -32,7 +32,6 @@ class _ScenePageState extends State<ScenePage> {
     super.initState();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive);
     _socketManager.locationStream.listen((message) {
-      print('Location: $message');
       setState(() {
         currentLocation = message;
       });

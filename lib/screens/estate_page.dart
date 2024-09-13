@@ -71,7 +71,6 @@ class _EstatesPageState extends State<EstatesPage> {
     super.initState();
     fetchEstates();
     _socketManager.sceneStream.listen((message) {
-      print('Scene: $message');
       setState(() {
         currentScene = message;
       });
