@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:vrrealstatedemo/screens/estate_page.dart';
 import 'package:flutter/services.dart';
-import 'package:web_socket_channel/io.dart';
+import 'package:vrrealstatedemo/utils/socket_manager.dart';
 
 class ScenePage extends StatefulWidget {
   final List<Scene> allScenes;
@@ -24,31 +24,24 @@ class ScenePage extends StatefulWidget {
 }
 
 class _ScenePageState extends State<ScenePage> {
-  IOWebSocketChannel? webSocketChannel;
-  String currentLocation = 't0';
+  String currentLocation = '';
+  late final SocketManager _socketManager = SocketManager();
+
   @override
   void initState() {
     super.initState();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive);
-    _connectWebSocket();
-  }
-
-  void _connectWebSocket() {
-    webSocketChannel =
-        IOWebSocketChannel.connect('ws://10.140.0.228:8080/server/socket');
-    webSocketChannel?.stream.listen((message) {
-      if (message.startsWith('sceneChanged:')) {
-        setState(() {
-          currentLocation = message.split(':')[1];
-        });
-      }
+    _socketManager.locationStream.listen((message) {
+      print('Location: $message');
+      setState(() {
+        currentLocation = message;
+      });
     });
   }
 
   @override
   void dispose() {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    webSocketChannel?.sink.close();
     super.dispose();
   }
 
@@ -168,7 +161,7 @@ class _ScenePageState extends State<ScenePage> {
               onTap: (int index) {
                 Scene selectedScene = widget.allScenes[index];
                 Scene nextScene = _getNextScene(selectedScene);
-                webSocketChannel?.sink.add('t$index');
+                _socketManager.sendMessage('t$index');
                 Navigator.pop(context);
                 Navigator.pushReplacement(
                   context,
