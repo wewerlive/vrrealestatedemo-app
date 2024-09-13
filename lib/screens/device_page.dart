@@ -107,7 +107,7 @@ class _DevicesPageState extends State<DevicesPage> {
   }
 
   void _initWebSocket(String deviceId) {
-    final wsUrl = Uri.parse('ws://10.140.0.228:8080/server/socket/$deviceId');
+    final wsUrl = Uri.parse('wss://vrerealestatedemo-backend.globeapp.dev/server/socket/$deviceId');
     socketConnections[deviceId] = WebSocketChannel.connect(wsUrl);
 
     socketConnections[deviceId]!.stream.listen((message) {
