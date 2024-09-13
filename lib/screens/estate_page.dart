@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:vrrealstatedemo/screens/device_page.dart';
 import 'package:vrrealstatedemo/screens/scene_page.dart';
-import 'package:web_socket_channel/io.dart';
+import 'package:vrrealstatedemo/utils/socket_manager.dart';
 
 class Estate {
   final String estateName;
@@ -63,14 +63,19 @@ class EstatesPage extends StatefulWidget {
 class _EstatesPageState extends State<EstatesPage> {
   List<Estate> estates = [];
   bool isLoading = false;
-  IOWebSocketChannel? webSocketChannel;
   String currentScene = '';
+  late final SocketManager _socketManager = SocketManager();
 
   @override
   void initState() {
     super.initState();
     fetchEstates();
-    _connectWebSocket();
+    _socketManager.sceneStream.listen((message) {
+      print('Scene: $message');
+      setState(() {
+        currentScene = message;
+      });
+    });
   }
 
   Future<void> fetchEstates() async {
@@ -108,21 +113,9 @@ class _EstatesPageState extends State<EstatesPage> {
     );
   }
 
-  void _connectWebSocket() {
-    webSocketChannel =
-        IOWebSocketChannel.connect('ws://10.140.0.228:8080/server/socket');
-    webSocketChannel?.stream.listen((message) {
-      if (message.startsWith('sceneChanged:')) {
-        setState(() {
-          currentScene = message.split(':')[1];
-        });
-      }
-    });
-  }
-
   @override
   void dispose() {
-    webSocketChannel?.sink.close();
+    _socketManager.close();
     super.dispose();
   }
 
@@ -240,8 +233,7 @@ class _EstatesPageState extends State<EstatesPage> {
             },
           );
 
-          webSocketChannel?.sink.add('s$index');
-
+          _socketManager.sendMessage('s$index');
           Future.delayed(const Duration(seconds: 2), () {
             if (!mounted) return;
             Navigator.pop(context); // Close the progress dialog
