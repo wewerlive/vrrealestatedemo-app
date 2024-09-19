@@ -65,7 +65,7 @@ class _DevicesPageState extends State<DevicesPage> {
 
     try {
       final response = await http.get(Uri.parse(
-          'https://vrerealestatedemo-backend.globeapp.dev/admin/ownerships/device?userId=$id'));
+          'http://192.168.1.2:8080/admin/ownerships/device?userId=$id'));
 
       if (!mounted) return; // Check again after the async operation
 

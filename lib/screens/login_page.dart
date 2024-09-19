@@ -68,7 +68,7 @@ class _LoginPageState extends State<LoginPage> {
         final response = await http
             .post(
               Uri.parse(
-                  'https://vrerealestatedemo-backend.globeapp.dev/auth/login'),
+                  'http://192.168.1.2:8080/auth/login'),
               headers: <String, String>{
                 'Content-Type': 'application/json; charset=UTF-8',
               },

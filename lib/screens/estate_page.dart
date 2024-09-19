@@ -84,7 +84,7 @@ class _EstatesPageState extends State<EstatesPage> {
 
     try {
       final response = await http.get(Uri.parse(
-          'https://vrerealestatedemo-backend.globeapp.dev/data/projects?deviceID=${widget.deviceID}'));
+          'http://192.168.1.2:8080/data/projects?deviceID=${widget.deviceID}'));
 
       if (response.statusCode == 200) {
         final List<dynamic> estatesJson = json.decode(response.body)['estates'];
