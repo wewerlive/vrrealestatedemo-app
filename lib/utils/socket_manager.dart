@@ -19,7 +19,7 @@ class SocketManager {
   void _initConnection() {
     if (_channel == null) {
       _channel =
-          IOWebSocketChannel.connect('wss://vrerealestatedemo-backend.globeapp.dev/server/socket');
+          IOWebSocketChannel.connect('ws://192.168.1.2:8080/server/socket');
       _channel?.stream.listen((message) {
         if (message.startsWith('t')) {
           _locationController.add(message);
