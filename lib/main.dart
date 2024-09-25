@@ -5,6 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'package:vrrealstatedemo/screens/device_page.dart';
 import 'package:vrrealstatedemo/screens/login_page.dart';
+import 'package:vrrealstatedemo/utils/progressbar.dart';
 
 void main() {
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();

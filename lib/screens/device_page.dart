@@ -5,9 +5,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
-
 import 'package:vrrealstatedemo/screens/estate_page.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:vrrealstatedemo/utils/progressbar.dart';
+
 
 class Device {
   final String deviceId;
@@ -38,109 +39,11 @@ class DevicesPage extends StatefulWidget {
   @override
   State<DevicesPage> createState() => _DevicesPageState();
 }
-
 class _DevicesPageState extends State<DevicesPage> {
   List<Device> devices = [];
   final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
   bool isLoading = false;
   Map<String, WebSocketChannel> socketConnections = {};
-
-  @override
-  void initState() {
-    super.initState();
-    fetchDevices();
-  }
-
-  Future<void> fetchDevices() async {
-    if (!mounted) {
-      return;
-    }
-
-    setState(() {
-      isLoading = true;
-    });
-
-    final id = await secureStorage.read(key: 'user_id');
-    String errorMessage;
-
-    try {
-      final response = await http.get(Uri.parse(
-          'http://192.168.1.2:8080/admin/ownerships/device?userId=$id'));
-
-      if (!mounted) return; // Check again after the async operation
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> responseData = json.decode(response.body);
-        if (responseData.containsKey('assignedDevices') &&
-            responseData['assignedDevices'] is List) {
-          final List<dynamic> devicesData = responseData['assignedDevices'];
-          setState(() {
-            devices =
-                devicesData.map((device) => Device.fromJson(device)).toList();
-          });
-
-          _showSnackBar('Devices loaded successfully', isError: false);
-          // Initialize WebSocket connections for each device
-          for (var device in devices) {
-            _initWebSocket(device.deviceId);
-          }
-        } else {
-          throw const FormatException('Unexpected data format');
-        }
-      } else {
-        throw HttpException('Failed to load devices: ${response.statusCode}');
-      }
-    } catch (e) {
-      errorMessage = 'Failed to fetch devices: ${e.toString()}';
-      if (mounted) {
-        // Check if still mounted before showing SnackBar
-        _showSnackBar(errorMessage, isError: true);
-      }
-    } finally {
-      if (mounted) {
-        // Check if still mounted before setting state
-        setState(() {
-          isLoading = false;
-        });
-      }
-    }
-  }
-
-  void _initWebSocket(String deviceId) {
-    final wsUrl = Uri.parse('ws://192.168.1.2:8080/server/socket/$deviceId');
-    socketConnections[deviceId] = WebSocketChannel.connect(wsUrl);
-
-    socketConnections[deviceId]!.stream.listen((message) {
-      final data = json.decode(message);
-      if (data['deviceId'] == deviceId) {
-        final updatedStatus = data['status'];
-        setState(() {
-          devices.firstWhere((device) => device.deviceId == deviceId).status =
-              updatedStatus;
-        });
-      }
-    }, onError: (error) {
-      _showSnackBar('WebSocket error: $error', isError: true);
-    }, onDone: () {
-      _showSnackBar('Websocket connection closed', isError: false);
-    });
-  }
-
-  @override
-  void dispose() {
-    // Close all WebSocket connections
-    for (var connection in socketConnections.values) {
-      connection.sink.close();
-    }
-    super.dispose();
-  }
-
-  Future<void> _handleLogout() async {
-    const FlutterSecureStorage secureStorage = FlutterSecureStorage();
-    await secureStorage.delete(key: 'auth_token');
-    if (!mounted) return;
-    Navigator.of(context).pushReplacementNamed('/login');
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -216,21 +119,74 @@ class _DevicesPageState extends State<DevicesPage> {
     );
   }
 
-  Widget _buildDeviceList(ThemeData theme, bool isWideScreen) {
-    return GridView.builder(
-      padding: const EdgeInsets.all(16),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: isWideScreen ? 3 : 1,
-        childAspectRatio: isWideScreen ? 1 : 16 / 9,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
-      ),
-      itemCount: devices.length,
-      itemBuilder: (context, index) {
-        final device = devices[index];
-        return _buildDeviceCard(device, theme, index);
-      },
-    );
+  @override
+  void dispose() {
+    // Close all WebSocket connections
+    for (var connection in socketConnections.values) {
+      connection.sink.close();
+    }
+    super.dispose();
+  }
+
+  Future<void> fetchDevices() async {
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      isLoading = true;
+    });
+
+    final id = await secureStorage.read(key: 'user_id');
+    String errorMessage;
+
+    try {
+      final response = await http.get(Uri.parse(
+          'https://vrerealestatedemo-backend.globeapp.dev/admin/ownerships/device?userId=$id'));
+
+      if (!mounted) return; // Check again after the async operation
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        if (responseData.containsKey('assignedDevices') &&
+            responseData['assignedDevices'] is List) {
+          final List<dynamic> devicesData = responseData['assignedDevices'];
+          setState(() {
+            devices =
+                devicesData.map((device) => Device.fromJson(device)).toList();
+          });
+
+          _showSnackBar('Devices loaded successfully', isError: false);
+          // Initialize WebSocket connections for each device
+          for (var device in devices) {
+            _initWebSocket(device.deviceId);
+          }
+        } else {
+          throw const FormatException('Unexpected data format');
+        }
+      } else {
+        throw HttpException('Failed to load devices: ${response.statusCode}');
+      }
+    } catch (e) {
+      errorMessage = 'Failed to fetch devices: ${e.toString()}';
+      if (mounted) {
+        // Check if still mounted before showing SnackBar
+        _showSnackBar(errorMessage, isError: true);
+      }
+    } finally {
+      if (mounted) {
+        // Check if still mounted before setting state
+        setState(() {
+          isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    fetchDevices();
   }
 
   Widget _buildDeviceCard(Device device, ThemeData theme, int index) {
@@ -374,6 +330,62 @@ class _DevicesPageState extends State<DevicesPage> {
     );
   }
 
+  Widget _buildDeviceList(ThemeData theme, bool isWideScreen) {
+    return GridView.builder(
+      padding: const EdgeInsets.all(16),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: isWideScreen ? 3 : 1,
+        childAspectRatio: isWideScreen ? 1 : 16 / 9,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+      ),
+      itemCount: devices.length,
+      itemBuilder: (context, index) {
+        final device = devices[index];
+        return _buildDeviceCard(device, theme, index);
+      },
+    );
+  }
+
+  Widget _buildDeviceStats(ThemeData theme, Device device) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        _buildStatItem(theme, 'Usage', '75%', Icons.pie_chart),
+        _buildStatItem(theme, 'Estates',
+            '${(device.estateIDs as List?)?.length ?? 0}', Icons.apartment),
+      ],
+    );
+  }
+
+  Widget _buildStatItem(
+      ThemeData theme, String label, String value, IconData icon) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: theme.textTheme.bodySmall
+              ?.copyWith(color: theme.colorScheme.onSurface.withOpacity(0.7)),
+        ),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            Icon(icon, color: theme.colorScheme.primaryContainer, size: 16),
+            const SizedBox(width: 4),
+            Text(
+              value,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurface,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
   Widget _buildStatusChip(
       String status, ThemeData theme, int index, Device device) {
     Color iconColor;
@@ -420,43 +432,32 @@ class _DevicesPageState extends State<DevicesPage> {
     );
   }
 
-  Widget _buildDeviceStats(ThemeData theme, Device device) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        _buildStatItem(theme, 'Usage', '75%', Icons.pie_chart),
-        _buildStatItem(theme, 'Estates',
-            '${(device.estateIDs as List?)?.length ?? 0}', Icons.apartment),
-      ],
-    );
+  Future<void> _handleLogout() async {
+    const FlutterSecureStorage secureStorage = FlutterSecureStorage();
+    await secureStorage.delete(key: 'auth_token');
+    if (!mounted) return;
+    Navigator.of(context).pushReplacementNamed('/login');
   }
 
-  Widget _buildStatItem(
-      ThemeData theme, String label, String value, IconData icon) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: theme.textTheme.bodySmall
-              ?.copyWith(color: theme.colorScheme.onSurface.withOpacity(0.7)),
-        ),
-        const SizedBox(height: 4),
-        Row(
-          children: [
-            Icon(icon, color: theme.colorScheme.primaryContainer, size: 16),
-            const SizedBox(width: 4),
-            Text(
-              value,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
+  void _initWebSocket(String deviceId) {
+    final wsUrl = Uri.parse(
+        'wss://vrerealestatedemo-backend.globeapp.dev/server/socket/$deviceId');
+    socketConnections[deviceId] = WebSocketChannel.connect(wsUrl);
+
+    socketConnections[deviceId]!.stream.listen((message) {
+      final data = json.decode(message);
+      if (data['deviceId'] == deviceId) {
+        final updatedStatus = data['status'];
+        setState(() {
+          devices.firstWhere((device) => device.deviceId == deviceId).status =
+              updatedStatus;
+        });
+      }
+    }, onError: (error) {
+      _showSnackBar('WebSocket error: $error', isError: true);
+    }, onDone: () {
+      _showSnackBar('Websocket connection closed', isError: false);
+    });
   }
 
   void _showSnackBar(String message, {bool isError = false}) {
@@ -475,51 +476,6 @@ class _DevicesPageState extends State<DevicesPage> {
                 },
               )
             : null,
-      ),
-    );
-  }
-}
-
-class StyledCircularProgressIndicator extends StatelessWidget {
-  final double size;
-  final double strokeWidth;
-  final Color backgroundColor;
-  final Color valueColor;
-
-  const StyledCircularProgressIndicator({
-    super.key,
-    this.size = 50.0,
-    this.strokeWidth = 5.0,
-    this.backgroundColor = Colors.grey,
-    this.valueColor = Colors.blue,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: valueColor.withOpacity(0.3),
-            blurRadius: 10,
-            spreadRadius: 2,
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: EdgeInsets.all(strokeWidth * 2.5),
-        child: Stack(
-          children: [
-            CircularProgressIndicator(
-              strokeWidth: strokeWidth,
-              backgroundColor: backgroundColor,
-              valueColor: AlwaysStoppedAnimation<Color>(valueColor),
-            ),
-          ],
-        ),
       ),
     );
   }

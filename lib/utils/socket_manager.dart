@@ -1,25 +1,37 @@
-import 'package:web_socket_channel/io.dart';
 import 'dart:async';
+
+import 'package:web_socket_channel/io.dart';
 
 class SocketManager {
   static final SocketManager _instance = SocketManager._internal();
-  factory SocketManager() => _instance;
+  IOWebSocketChannel? _channel;
 
+  final _locationController = StreamController<String>.broadcast();
+
+  final _sceneController = StreamController<String>.broadcast();
+  factory SocketManager() => _instance;
   SocketManager._internal() {
     _initConnection();
   }
 
-  IOWebSocketChannel? _channel;
-  final _locationController = StreamController<String>.broadcast();
-  final _sceneController = StreamController<String>.broadcast();
-
   Stream<String> get locationStream => _locationController.stream;
   Stream<String> get sceneStream => _sceneController.stream;
 
+  void close() {
+    _channel?.sink.close();
+    _locationController.close();
+    _sceneController.close();
+    _channel = null;
+  }
+
+  void sendMessage(String message) {
+    _channel?.sink.add(message);
+  }
+
   void _initConnection() {
     if (_channel == null) {
-      _channel =
-          IOWebSocketChannel.connect('ws://192.168.1.2:8080/server/socket');
+      _channel = IOWebSocketChannel.connect(
+          'wss://vrerealestatedemo-backend.globeapp.dev/server/socket');
       _channel?.stream.listen((message) {
         if (message.startsWith('t')) {
           _locationController.add(message);
@@ -34,16 +46,5 @@ class SocketManager {
         Future.delayed(const Duration(seconds: 5), _initConnection);
       });
     }
-  }
-
-  void sendMessage(String message) {
-    _channel?.sink.add(message);
-  }
-
-  void close() {
-    _channel?.sink.close();
-    _locationController.close();
-    _sceneController.close();
-    _channel = null;
   }
 }

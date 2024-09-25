@@ -68,7 +68,7 @@ class _LoginPageState extends State<LoginPage> {
         final response = await http
             .post(
               Uri.parse(
-                  'http://192.168.1.2:8080/auth/login'),
+                  'https://vrerealestatedemo-backend.globeapp.dev/auth/login'),
               headers: <String, String>{
                 'Content-Type': 'application/json; charset=UTF-8',
               },
@@ -323,7 +323,7 @@ class _LoginPageState extends State<LoginPage> {
       const SnackBar(
         content: Text('Connected to the internet'),
         backgroundColor: Colors.green,
-        duration: Duration(seconds: 3),
+        duration: Duration(seconds: 1),
       ),
     );
   }

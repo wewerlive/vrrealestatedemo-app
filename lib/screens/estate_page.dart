@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:vrrealstatedemo/screens/device_page.dart';
+import 'package:vrrealstatedemo/utils/progressbar.dart';
 import 'package:vrrealstatedemo/screens/scene_page.dart';
 import 'package:vrrealstatedemo/utils/socket_manager.dart';
 
@@ -32,6 +32,18 @@ class Estate {
   }
 }
 
+class EstatesPage extends StatefulWidget {
+  final String deviceID;
+
+  const EstatesPage({
+    super.key,
+    required this.deviceID,
+  });
+
+  @override
+  State<EstatesPage> createState() => _EstatesPageState();
+}
+
 class Scene {
   final String id;
   final String sceneName;
@@ -48,75 +60,11 @@ class Scene {
   }
 }
 
-class EstatesPage extends StatefulWidget {
-  final String deviceID;
-
-  const EstatesPage({
-    super.key,
-    required this.deviceID,
-  });
-
-  @override
-  State<EstatesPage> createState() => _EstatesPageState();
-}
-
 class _EstatesPageState extends State<EstatesPage> {
   List<Estate> estates = [];
   bool isLoading = false;
   String currentScene = '';
   late final SocketManager _socketManager = SocketManager();
-
-  @override
-  void initState() {
-    super.initState();
-    fetchEstates();
-    _socketManager.sceneStream.listen((message) {
-      setState(() {
-        currentScene = message;
-      });
-    });
-  }
-
-  Future<void> fetchEstates() async {
-    setState(() {
-      isLoading = true;
-    });
-
-    try {
-      final response = await http.get(Uri.parse(
-          'http://192.168.1.2:8080/data/projects?deviceID=${widget.deviceID}'));
-
-      if (response.statusCode == 200) {
-        final List<dynamic> estatesJson = json.decode(response.body)['estates'];
-        setState(() {
-          estates = estatesJson.map((json) => Estate.fromJson(json)).toList();
-          isLoading = false;
-        });
-      } else {
-        throw Exception('Failed to load estates');
-      }
-    } catch (e) {
-      setState(() {
-        isLoading = false;
-      });
-      _showErrorSnackBar('Failed to fetch estates: ${e.toString()}');
-    }
-  }
-
-  void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    _socketManager.close();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -199,21 +147,47 @@ class _EstatesPageState extends State<EstatesPage> {
     );
   }
 
-  Widget _buildEstateList(ThemeData theme, bool isWideScreen) {
-    return GridView.builder(
-      padding: const EdgeInsets.all(16),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: isWideScreen ? 3 : 1,
-        childAspectRatio: isWideScreen ? 1 : 0.7,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
-      ),
-      itemCount: estates.length,
-      itemBuilder: (context, index) {
-        final estate = estates[index];
-        return _buildEstateCard(estate, theme, index, isWideScreen);
-      },
-    );
+  @override
+  void dispose() {
+    _socketManager.close();
+    super.dispose();
+  }
+
+  Future<void> fetchEstates() async {
+    setState(() {
+      isLoading = true;
+    });
+
+    try {
+      final response = await http.get(Uri.parse(
+          'https://vrerealestatedemo-backend.globeapp.dev/data/projects?deviceID=${widget.deviceID}'));
+
+      if (response.statusCode == 200) {
+        final List<dynamic> estatesJson = json.decode(response.body)['estates'];
+        setState(() {
+          estates = estatesJson.map((json) => Estate.fromJson(json)).toList();
+          isLoading = false;
+        });
+      } else {
+        throw Exception('Failed to load estates');
+      }
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+      });
+      _showErrorSnackBar('Failed to fetch estates: ${e.toString()}');
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    fetchEstates();
+    _socketManager.sceneStream.listen((message) {
+      setState(() {
+        currentScene = message;
+      });
+    });
   }
 
   Widget _buildEstateCard(
@@ -327,6 +301,56 @@ class _EstatesPageState extends State<EstatesPage> {
     );
   }
 
+  Widget _buildEstateList(ThemeData theme, bool isWideScreen) {
+    return GridView.builder(
+      padding: const EdgeInsets.all(16),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: isWideScreen ? 3 : 1,
+        childAspectRatio: isWideScreen ? 1 : 0.7,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+      ),
+      itemCount: estates.length,
+      itemBuilder: (context, index) {
+        final estate = estates[index];
+        return _buildEstateCard(estate, theme, index, isWideScreen);
+      },
+    );
+  }
+
+  Widget _buildSceneChips(
+      List<Scene> scenes, ThemeData theme, int estateIndex) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        ...scenes.map(
+          (scene) => Chip(
+            label: Text(
+              scene.sceneName,
+              style: TextStyle(
+                color: theme.colorScheme.surface,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
+            ),
+            backgroundColor: theme.colorScheme.primaryContainer,
+            elevation: 4,
+            shadowColor: theme.colorScheme.primary.withOpacity(0.8),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+              side: BorderSide(
+                color: theme.colorScheme.primaryContainer,
+                width: 1,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildStatusChip(String status, ThemeData theme) {
     Color chipColor;
     IconData iconData;
@@ -369,36 +393,12 @@ class _EstatesPageState extends State<EstatesPage> {
     );
   }
 
-  Widget _buildSceneChips(
-      List<Scene> scenes, ThemeData theme, int estateIndex) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        ...scenes.map(
-          (scene) => Chip(
-            label: Text(
-              scene.sceneName,
-              style: TextStyle(
-                color: theme.colorScheme.surface,
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-              ),
-            ),
-            backgroundColor: theme.colorScheme.primaryContainer,
-            elevation: 4,
-            shadowColor: theme.colorScheme.primary.withOpacity(0.8),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-              side: BorderSide(
-                color: theme.colorScheme.primaryContainer,
-                width: 1,
-              ),
-            ),
-          ),
-        ),
-      ],
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+      ),
     );
   }
 }
