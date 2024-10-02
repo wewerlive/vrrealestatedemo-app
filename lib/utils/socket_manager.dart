@@ -42,9 +42,9 @@ class SocketManager {
   void _handleIncomingMessage(dynamic message) {
     if (message is String) {
       if (message.startsWith('s')) {
-        _locationController.add(message);
+        _locationController.add(message.substring(1));
       } else if (message.startsWith('t')) {
-        _sceneController.add(message);
+        _sceneController.add(message.substring(1));
       } else {
         try {
           final data = jsonDecode(message);

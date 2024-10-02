@@ -117,6 +117,7 @@ class _EstatesPageState extends State<EstatesPage> {
   }
 
   void _handleLocationUpdate(String index) {
+    print(index);
     final parsedIndex = int.tryParse(index);
     if (parsedIndex != null &&
         parsedIndex >= 0 &&
@@ -429,10 +430,5 @@ class _EstatesPageState extends State<EstatesPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
   }
 }

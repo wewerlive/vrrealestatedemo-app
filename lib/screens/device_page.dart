@@ -44,6 +44,7 @@ class _DevicesPageState extends State<DevicesPage> {
   final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
   bool isLoading = false;
   late SocketManager _socketManager;
+  // ignore: unused_field
   StreamSubscription? _deviceStatusSubscription;
 
   @override
@@ -152,11 +153,6 @@ class _DevicesPageState extends State<DevicesPage> {
     }, onError: (error) {
       _showSnackBar('Error updating device status', isError: true);
     });
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
   }
 
   Future<void> fetchDevices() async {
