@@ -122,7 +122,7 @@ class _DevicesPageState extends State<DevicesPage> {
                   ),
                 )
               : RefreshIndicator(
-                  onRefresh: fetchDevices,
+                  onRefresh: _initializeSocketManager,
                   child: _buildDeviceList(theme, isWideScreen),
                 ),
         ),
