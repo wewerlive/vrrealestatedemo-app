@@ -1,50 +1,72 @@
 import 'dart:async';
-
-import 'package:web_socket_channel/io.dart';
+import 'dart:convert';
+import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class SocketManager {
   static final SocketManager _instance = SocketManager._internal();
-  IOWebSocketChannel? _channel;
-
-  final _locationController = StreamController<String>.broadcast();
-
-  final _sceneController = StreamController<String>.broadcast();
   factory SocketManager() => _instance;
-  SocketManager._internal() {
-    _initConnection();
-  }
 
+  WebSocketChannel? _channel;
+  final _deviceStatusController =
+      StreamController<Map<String, dynamic>>.broadcast();
+  final _locationController = StreamController<String>.broadcast();
+  final _sceneController = StreamController<String>.broadcast();
+
+  Stream<Map<String, dynamic>> get deviceStatusStream =>
+      _deviceStatusController.stream;
   Stream<String> get locationStream => _locationController.stream;
   Stream<String> get sceneStream => _sceneController.stream;
 
-  void close() {
-    _channel?.sink.close();
-    _locationController.close();
-    _sceneController.close();
-    _channel = null;
+  SocketManager._internal();
+
+  Future<void> initializeSocket() async {
+    const storage = FlutterSecureStorage();
+    final userId = await storage.read(key: 'user_id');
+
+    if (userId != null) {
+      final wsUrl = Uri.parse('wss://vrerealestatedemo-backend.globeapp.dev/socket/$userId');
+      _channel = WebSocketChannel.connect(wsUrl);
+      print('Connected to: $userId');
+
+      _channel!.stream.listen((message) {
+        _handleIncomingMessage(message);
+      }, onError: (error) {
+        print('Error: $error');
+      }, onDone: () {
+        print('Connection closed');
+      });
+    }
+  }
+
+  void _handleIncomingMessage(dynamic message) {
+    if (message is String) {
+      if (message.startsWith('s')) {
+        _locationController.add(message);
+      } else if (message.startsWith('t')) {
+        _sceneController.add(message);
+      } else {
+        try {
+          final data = jsonDecode(message);
+          if (data['deviceId'] != null && data['status'] != null) {
+            _deviceStatusController.add(data);
+          }
+        } catch (e) {
+          // ignore: avoid_print
+          print('Error parsing message: $e');
+        }
+      }
+    }
   }
 
   void sendMessage(String message) {
     _channel?.sink.add(message);
   }
 
-  void _initConnection() {
-    if (_channel == null) {
-      _channel = IOWebSocketChannel.connect(
-          'wss://vrerealestatedemo-backend.globeapp.dev/server/socket');
-      _channel?.stream.listen((message) {
-        if (message.startsWith('t')) {
-          _locationController.add(message);
-        } else if (message.startsWith('s')) {
-          _sceneController.add(message);
-        }
-      }, onDone: () {
-        // Attempt to reconnect if the connection is closed
-        Future.delayed(const Duration(seconds: 5), _initConnection);
-      }, onError: (error) {
-        // Attempt to reconnect on error
-        Future.delayed(const Duration(seconds: 5), _initConnection);
-      });
-    }
+  void close() {
+    _channel?.sink.close();
+    _deviceStatusController.close();
+    _locationController.close();
+    _sceneController.close();
   }
 }

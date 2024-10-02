@@ -24,18 +24,33 @@ class ScenePage extends StatefulWidget {
 }
 
 class _ScenePageState extends State<ScenePage> {
-  String currentLocation = '';
-  late final SocketManager _socketManager = SocketManager();
+  final SocketManager _socketManager = SocketManager();
+  late Scene _currentScene;
 
   @override
   void initState() {
     super.initState();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive);
-    _socketManager.locationStream.listen((message) {
-      setState(() {
-        currentLocation = message;
-      });
+    _currentScene = widget.currentScene ?? widget.allScenes.first;
+    _socketManager.initializeSocket();
+    _listenToSceneUpdates();
+  }
+
+  void _listenToSceneUpdates() {
+    _socketManager.sceneStream.listen((sceneIndex) {
+      if (mounted) {
+        final index = int.tryParse(sceneIndex);
+        if (index != null && index >= 0 && index < widget.allScenes.length) {
+          setState(() {
+            _currentScene = widget.allScenes[index];
+          });
+        }
+      }
     });
+  }
+
+  void _selectScene(int index) {
+    _socketManager.sendMessage('t$index');
   }
 
   @override
@@ -50,7 +65,7 @@ class _ScenePageState extends State<ScenePage> {
       body: Stack(
         children: [
           Image.asset(
-            widget.currentScene!.imageUrl,
+            _currentScene.imageUrl,
             fit: BoxFit.cover,
             height: double.infinity,
             width: double.infinity,
@@ -86,11 +101,12 @@ class _ScenePageState extends State<ScenePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      widget.currentScene!.sceneName,
+                      _currentScene.sceneName,
                       style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold),
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -159,29 +175,18 @@ class _ScenePageState extends State<ScenePage> {
             child: CarouselView(
               onTap: (int index) {
                 Scene selectedScene = widget.allScenes[index];
-                Scene nextScene = _getNextScene(selectedScene);
-                _socketManager.sendMessage('t$index');
+                _getNextScene(selectedScene);
+                _selectScene(index);
                 Navigator.pop(context);
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ScenePage(
-                      allScenes: widget.allScenes,
-                      currentScene: selectedScene,
-                      estateID: widget.estateID,
-                      estateName: widget.estateName,
-                      nextScene: nextScene,
-                    ),
-                  ),
-                );
+                setState(() {
+                  _currentScene = selectedScene;
+                });
               },
               itemSnapping: true,
               itemExtent: double.maxFinite,
               shrinkExtent: 100,
               controller: CarouselController(
-                initialItem: widget.currentScene != null
-                    ? widget.allScenes.indexOf(widget.currentScene!)
-                    : 0,
+                initialItem: widget.allScenes.indexOf(_currentScene),
               ),
               children: widget.allScenes.map((scene) {
                 return Container(

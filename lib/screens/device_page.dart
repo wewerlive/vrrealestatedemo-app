@@ -6,9 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:vrrealstatedemo/screens/estate_page.dart';
-import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:vrrealstatedemo/utils/socket_manager.dart';
 import 'package:vrrealstatedemo/utils/progressbar.dart';
-
 
 class Device {
   final String deviceId;
@@ -39,11 +38,20 @@ class DevicesPage extends StatefulWidget {
   @override
   State<DevicesPage> createState() => _DevicesPageState();
 }
+
 class _DevicesPageState extends State<DevicesPage> {
   List<Device> devices = [];
   final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
   bool isLoading = false;
-  Map<String, WebSocketChannel> socketConnections = {};
+  late SocketManager _socketManager;
+  StreamSubscription? _deviceStatusSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeSocketManager();
+    fetchDevices();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -113,25 +121,46 @@ class _DevicesPageState extends State<DevicesPage> {
                     valueColor: theme.colorScheme.secondary,
                   ),
                 )
-              : _buildDeviceList(theme, isWideScreen),
+              : RefreshIndicator(
+                  onRefresh: fetchDevices,
+                  child: _buildDeviceList(theme, isWideScreen),
+                ),
         ),
       ),
     );
   }
 
+  Future<void> _initializeSocketManager() async {
+    _socketManager = SocketManager();
+    await _socketManager.initializeSocket();
+    _listenToDeviceStatusUpdates();
+  }
+
+  void _listenToDeviceStatusUpdates() {
+    _deviceStatusSubscription =
+        _socketManager.deviceStatusStream.listen((data) {
+          print('Device status update: $data');
+      final updatedDeviceIndex =
+          devices.indexWhere((device) => device.deviceId == data['deviceId']);
+      if (updatedDeviceIndex != -1) {
+        setState(() {
+          for (var i = 0; i < devices.length; i++) {
+            devices[i].status = i == updatedDeviceIndex ? 'Online' : 'Offline';
+          }
+        });
+      }
+    }, onError: (error) {
+      _showSnackBar('Error updating device status', isError: true);
+    });
+  }
+
   @override
   void dispose() {
-    // Close all WebSocket connections
-    for (var connection in socketConnections.values) {
-      connection.sink.close();
-    }
     super.dispose();
   }
 
   Future<void> fetchDevices() async {
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
 
     setState(() {
       isLoading = true;
@@ -144,7 +173,7 @@ class _DevicesPageState extends State<DevicesPage> {
       final response = await http.get(Uri.parse(
           'https://vrerealestatedemo-backend.globeapp.dev/admin/ownerships/device?userId=$id'));
 
-      if (!mounted) return; // Check again after the async operation
+      if (!mounted) return;
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
@@ -155,12 +184,7 @@ class _DevicesPageState extends State<DevicesPage> {
             devices =
                 devicesData.map((device) => Device.fromJson(device)).toList();
           });
-
           _showSnackBar('Devices loaded successfully', isError: false);
-          // Initialize WebSocket connections for each device
-          for (var device in devices) {
-            _initWebSocket(device.deviceId);
-          }
         } else {
           throw const FormatException('Unexpected data format');
         }
@@ -170,23 +194,15 @@ class _DevicesPageState extends State<DevicesPage> {
     } catch (e) {
       errorMessage = 'Failed to fetch devices: ${e.toString()}';
       if (mounted) {
-        // Check if still mounted before showing SnackBar
         _showSnackBar(errorMessage, isError: true);
       }
     } finally {
       if (mounted) {
-        // Check if still mounted before setting state
         setState(() {
           isLoading = false;
         });
       }
     }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    fetchDevices();
   }
 
   Widget _buildDeviceCard(Device device, ThemeData theme, int index) {
@@ -437,27 +453,6 @@ class _DevicesPageState extends State<DevicesPage> {
     await secureStorage.delete(key: 'auth_token');
     if (!mounted) return;
     Navigator.of(context).pushReplacementNamed('/login');
-  }
-
-  void _initWebSocket(String deviceId) {
-    final wsUrl = Uri.parse(
-        'wss://vrerealestatedemo-backend.globeapp.dev/server/socket/$deviceId');
-    socketConnections[deviceId] = WebSocketChannel.connect(wsUrl);
-
-    socketConnections[deviceId]!.stream.listen((message) {
-      final data = json.decode(message);
-      if (data['deviceId'] == deviceId) {
-        final updatedStatus = data['status'];
-        setState(() {
-          devices.firstWhere((device) => device.deviceId == deviceId).status =
-              updatedStatus;
-        });
-      }
-    }, onError: (error) {
-      _showSnackBar('WebSocket error: $error', isError: true);
-    }, onDone: () {
-      _showSnackBar('Websocket connection closed', isError: false);
-    });
   }
 
   void _showSnackBar(String message, {bool isError = false}) {
