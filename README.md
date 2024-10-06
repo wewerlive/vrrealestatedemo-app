@@ -29,7 +29,11 @@ vrrealstatedemo/
 │   ├── screens/
 │   │   ├── DevicesPage.dart
 │   │   ├── EstatesPage.dart
-│   │   └── LoginPage.dart
+│   │   ├── LoginPage.dart
+│   │   └── ScenePage.dart
+|   ├── utils/
+│   │   ├── Progressbar.dart
+│   │   └── SocketManager.dart
 │   └── main.dart
 ├── assets/
 │   └── app-icon.png
@@ -87,8 +91,8 @@ Before you begin, ensure you have met the following requirements:
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/wewerlive/vrrealstatedemo.git
-   cd vrrealstatedemo
+   git clone https://github.com/wewerlive/vrrealstatedemo-app.git
+   cd vrrealstatedemo-app
    ```
 
 2. Install dependencies:
@@ -130,8 +134,10 @@ Here are some common issues you might encounter and how to resolve them:
    - Ensure Xcode is installed (for macOS users).
    - Run `sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer` to set the correct Xcode path.
 
-5. **WebSocket connection issues**
+5. **Socket.IO client connection issues**
    - Check your internet connection.
-   - Verify that the WebSocket server URL in the `.env` file is correct.
+   - Verify that the Socket.IO server URL in the `.env` file is correct.
+   - Ensure the server is running and accessible.
+   - Check for any CORS issues if connecting from a web client.
 
 If you encounter any other issues, please check the [Flutter documentation](https://flutter.dev/docs) or open an issue in the project repository.
