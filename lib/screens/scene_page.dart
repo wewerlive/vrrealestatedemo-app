@@ -50,7 +50,7 @@ class _ScenePageState extends State<ScenePage> {
   }
 
   void _selectScene(int index) {
-    _socketManager.sendMessage('t$index');
+    _socketManager.sendTeleChangeCommand('t$index', widget.estateID);
   }
 
   @override

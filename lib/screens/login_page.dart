@@ -68,7 +68,7 @@ class _LoginPageState extends State<LoginPage> {
         final response = await http
             .post(
               Uri.parse(
-                  'https://vrerealestatedemo-backend.globeapp.dev/auth/login'),
+                  'https://secondary-mindy-twinverse-5a55a10e.koyeb.app/users/createUser'),
               headers: <String, String>{
                 'Content-Type': 'application/json; charset=UTF-8',
               },
@@ -81,8 +81,9 @@ class _LoginPageState extends State<LoginPage> {
 
         if (response.statusCode == 200) {
           final responseData = jsonDecode(response.body);
-          final token = responseData['token'];
-          final id = responseData['userId'];
+          final token =
+              responseData['uid']; // Assuming the UID is returned as a token
+          final id = responseData['uid'];
 
           await _secureStorage.write(key: 'auth_token', value: token);
           await _secureStorage.write(key: 'user_id', value: id);
@@ -93,17 +94,11 @@ class _LoginPageState extends State<LoginPage> {
             context,
             MaterialPageRoute(builder: (context) => const DevicesPage()),
           );
-        } else if (response.statusCode == 401) {
-          _showSnackBar('Unauthorized. Please check your credentials.');
-        } else if (response.statusCode == 500) {
-          _showSnackBar('Server error. Please try again later.');
         } else {
-          _showSnackBar('An error occurred. Please try again.');
+          _showSnackBar('Login failed. Please check your credentials.');
         }
-      } on TimeoutException {
-        _showSnackBar('Request timed out. Please try again.');
       } catch (e) {
-        _showSnackBar('DNS - Socket Exception occurred. Please try again.');
+        _showSnackBar('An error occurred. Please try again.');
       }
     }
   }

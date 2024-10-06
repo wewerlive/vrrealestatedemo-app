@@ -94,10 +94,10 @@ class _EstatesPageState extends State<EstatesPage> {
   Future<void> fetchEstates() async {
     try {
       final response = await http.get(Uri.parse(
-          'https://vrerealestatedemo-backend.globeapp.dev/data/projects?deviceID=${widget.deviceID}'));
+          'https://secondary-mindy-twinverse-5a55a10e.koyeb.app/users/${widget.deviceID}/estates'));
 
       if (response.statusCode == 200) {
-        final List<dynamic> estatesJson = json.decode(response.body)['estates'];
+        final List<dynamic> estatesJson = json.decode(response.body);
         setState(() {
           estates = estatesJson.map((json) => Estate.fromJson(json)).toList();
         });
@@ -147,13 +147,13 @@ class _EstatesPageState extends State<EstatesPage> {
   }
 
   void _selectEstate(int index) {
-    if (index >= 0 && index < estates.length) {
-      _socketManager.sendMessage('s$index');
-      _showLoadingDialog();
-    } else {
-      _showErrorSnackBar('Invalid estate selection');
-    }
+  if (index >= 0 && index < estates.length) {
+    _socketManager.sendSceneChangeCommand('s$index', widget.deviceID);
+    _showLoadingDialog();
+  } else {
+    _showErrorSnackBar('Invalid estate selection');
   }
+}
 
   void _showLoadingDialog() {
     showDialog(

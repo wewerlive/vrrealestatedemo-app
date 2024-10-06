@@ -167,23 +167,19 @@ class _DevicesPageState extends State<DevicesPage> {
 
     try {
       final response = await http.get(Uri.parse(
-          'https://vrerealestatedemo-backend.globeapp.dev/admin/ownerships/device?userId=$id'));
+          'https://secondary-mindy-twinverse-5a55a10e.koyeb.app/headsets/$id'));
 
       if (!mounted) return;
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
-        if (responseData.containsKey('assignedDevices') &&
-            responseData['assignedDevices'] is List) {
-          final List<dynamic> devicesData = responseData['assignedDevices'];
-          setState(() {
-            devices =
-                devicesData.map((device) => Device.fromJson(device)).toList();
-          });
-          _showSnackBar('Devices loaded successfully', isError: false);
-        } else {
-          throw const FormatException('Unexpected data format');
-        }
+        setState(() {
+          devices = responseData.entries
+              .map((entry) =>
+                  Device.fromJson(entry.value..addAll({'id': entry.key})))
+              .toList();
+        });
+        _showSnackBar('Devices loaded successfully', isError: false);
       } else {
         throw HttpException('Failed to load devices: ${response.statusCode}');
       }
