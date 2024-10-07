@@ -34,21 +34,6 @@ class _ScenePageState extends State<ScenePage> {
     super.initState();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive);
     _currentScene = widget.currentScene ?? widget.allScenes.first;
-    _socketManager.initializeSocket();
-    _listenToSceneUpdates();
-  }
-
-  void _listenToSceneUpdates() {
-    _socketManager.sceneStream.listen((sceneIndex) {
-      if (mounted) {
-        final index = int.tryParse(sceneIndex);
-        if (index != null && index >= 0 && index < widget.allScenes.length) {
-          setState(() {
-            _currentScene = widget.allScenes[index];
-          });
-        }
-      }
-    });
   }
 
   void _selectScene(int index) {

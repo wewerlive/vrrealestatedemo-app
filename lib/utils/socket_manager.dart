@@ -24,22 +24,17 @@ class SocketManager {
     final userId = await storage.read(key: 'user_id');
 
     if (userId != null) {
-      _socket = IO.io('http://192.168.1.10:3000/', <String, dynamic>{
-        'transports': ['websocket'],
-        'autoConnect': true
-      });
+      _socket = IO.io(
+          'https://secondary-mindy-twinverse-5a55a10e.koyeb.app/',
+          <String, dynamic>{
+            'transports': ['websocket'],
+            'autoConnect': true
+          });
 
       _socket.connect();
       _socket.on('connect', (_) => print('Connected to socket server'));
-      _socket.on('deviceStatus', (data) {
-        _deviceStatusController.add(data);
-      });
-      _socket.on('sceneChange', (data) {
-        _sceneController.add(data);
-      });
-      _socket.on('teleChange', (data) {
-        _locationController.add(data);
-      });
+      _socket.on('sceneChange', (data) => _sceneController.add(data));
+      _socket.on('teleChange', (data) => _locationController.add(data));
     }
   }
 

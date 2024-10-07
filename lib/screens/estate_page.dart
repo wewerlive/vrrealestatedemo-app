@@ -1,174 +1,91 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
-import 'package:vrrealstatedemo/utils/progressbar.dart';
 import 'package:vrrealstatedemo/screens/scene_page.dart';
+import 'package:vrrealstatedemo/utils/progressbar.dart';
 import 'package:vrrealstatedemo/utils/socket_manager.dart';
-
-class Estate {
-  final String estateName;
-  final String estateID;
-  final List<Scene> scenes;
-  final String status;
-
-  Estate({
-    required this.estateName,
-    required this.estateID,
-    required this.scenes,
-    required this.status,
-  });
-
-  factory Estate.fromJson(Map<String, dynamic> json) {
-    return Estate(
-      estateName: json['estateName'] ?? '',
-      estateID: json['estateID'] ?? '',
-      scenes: (json['scenes'] as List<dynamic>?)
-              ?.map((scene) => Scene.fromJson(scene))
-              .toList() ??
-          [],
-      status: json['status'] ?? '',
-    );
-  }
-}
-
-class Scene {
-  final String id;
-  final String sceneName;
-  final String imageUrl;
-
-  Scene({required this.id, required this.sceneName, required this.imageUrl});
-
-  factory Scene.fromJson(Map<String, dynamic> json) {
-    return Scene(
-      id: json['id'] ?? '',
-      sceneName: json['sceneName'] ?? '',
-      imageUrl: json['imageUrl'] ?? '',
-    );
-  }
-}
 
 class EstatesPage extends StatefulWidget {
   final String deviceID;
 
-  const EstatesPage({
-    super.key,
-    required this.deviceID,
-  });
+  const EstatesPage({super.key, required this.deviceID});
 
   @override
   State<EstatesPage> createState() => _EstatesPageState();
 }
 
 class _EstatesPageState extends State<EstatesPage> {
+  static const String _apiBaseUrl =
+      'https://secondary-mindy-twinverse-5a55a10e.koyeb.app';
+
   List<Estate> estates = [];
-  bool isLoading = false;
   final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
+  bool isLoading = false;
   final SocketManager _socketManager = SocketManager();
-  // ignore: unused_field
-  StreamSubscription? _locationSubscription;
 
   @override
   void initState() {
     super.initState();
-    _initializeSocketAndFetchEstates();
+    _fetchEstates();
   }
 
-  Future<void> _initializeSocketAndFetchEstates() async {
-    setState(() {
-      isLoading = true;
-    });
+  Future<void> _fetchEstates() async {
+    if (!mounted) return;
 
-    try {
-      await _socketManager.initializeSocket();
-      await fetchEstates();
-      // _listenToLocationUpdates();
-    } catch (e) {
-      _showErrorSnackBar('Failed to initialize: ${e.toString()}');
-    } finally {
-      setState(() {
-        isLoading = false;
-      });
+    setState(() => isLoading = true);
+
+    final userId = await secureStorage.read(key: 'user_id');
+    if (userId == null) {
+      _handleError('User ID not found. Please log in again.');
+      return;
     }
-  }
-
-  Future<void> fetchEstates() async {
-    final id = await secureStorage.read(key: 'user_id');
 
     try {
-      final response = await http
-          .get(Uri.parse('http://192.168.1.10:3000/users/$id/estates'));
+      final response = await _getEstates(userId);
+      final estates = _parseEstatesResponse(response);
 
-      if (response.statusCode == 200) {
-        final List<dynamic> estatesJson = json.decode(response.body);
+      if (mounted) {
         setState(() {
-          estates = estatesJson.map((json) => Estate.fromJson(json)).toList();
+          this.estates = estates;
+          isLoading = false;
         });
-      } else {
-        throw Exception('Failed to load estates');
+        _showSnackBar('Estates loaded successfully', isError: false);
       }
     } catch (e) {
-      _showErrorSnackBar('Failed to fetch estates: ${e.toString()}');
+      _handleError('Failed to fetch estates: ${e.toString()}');
     }
   }
 
-  // void _listenToLocationUpdates() {
-  //   _locationSubscription = _socketManager.locationStream.listen(
-  //     (index) => _handleLocationUpdate(index),
-  //     onError: (error) => _showErrorSnackBar('Location update error: $error'),
-  //   );
-  // }
-
-  // void _handleLocationUpdate(String index) {
-  //   print(index);
-  //   final parsedIndex = int.tryParse(index);
-  //   if (parsedIndex != null &&
-  //       parsedIndex >= 0 &&
-  //       parsedIndex < estates.length) {
-  //     final selectedEstate = estates[parsedIndex];
-  //     _navigateToScenePage(selectedEstate);
-  //   } else {
-  //     _showErrorSnackBar('Invalid estate index received');
-  //   }
-  // }
-
-  void _navigateToScenePage(Estate estate) {
-    if (!mounted) return;
-    Navigator.pop(context);
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ScenePage(
-          deviceID: widget.deviceID,
-          allScenes: estate.scenes,
-          currentScene: estate.scenes.isNotEmpty ? estate.scenes[0] : null,
-          estateName: estate.estateName,
-          estateID: estate.estateID,
-          nextScene: estate.scenes.length > 1 ? estate.scenes[1] : null,
-        ),
-      ),
+  Future<http.Response> _getEstates(String userId) async {
+    final response = await http.get(
+      Uri.parse('$_apiBaseUrl/users/$userId/estates'),
+      headers: {'Content-Type': 'application/json'},
+    ).timeout(
+      const Duration(seconds: 10),
+      onTimeout: () => throw TimeoutException('Request timed out'),
     );
-  }
 
-  void _selectEstate(int index) {
-    if (index >= 0 && index < estates.length) {
-      _socketManager.sendSceneChangeCommand('s$index', widget.deviceID);
-      _navigateToScenePage(estates[index]);
-      // _showLoadingDialog();
-    } else {
-      _showErrorSnackBar('Invalid estate selection');
+    if (response.statusCode != 200) {
+      throw HttpException('Failed to load estates: ${response.statusCode}');
     }
+
+    return response;
   }
 
-  void _showLoadingDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return const Center(child: CircularProgressIndicator());
-      },
-    );
+  List<Estate> _parseEstatesResponse(http.Response response) {
+    final List<dynamic> responseData = json.decode(response.body);
+    return responseData.map((json) => Estate.fromJson(json)).toList();
+  }
+
+  void _handleError(String message) {
+    if (mounted) {
+      setState(() => isLoading = false);
+      _showSnackBar(message, isError: true);
+    }
   }
 
   @override
@@ -186,47 +103,15 @@ class _EstatesPageState extends State<EstatesPage> {
   AppBar _buildAppBar(ThemeData theme) {
     return AppBar(
       leading: IconButton(
-        icon: Icon(Icons.arrow_back, color: theme.colorScheme.onPrimary),
-        onPressed: () => Navigator.pop(context),
+        onPressed: () => Navigator.pushNamed(context, '/devices'),
+        icon: const Icon(Icons.arrow_back),
       ),
-      title: Text(
-        'Estates for Device ${widget.deviceID}',
-        style: TextStyle(
-          color: theme.colorScheme.onPrimary,
-          fontWeight: FontWeight.bold,
-          fontSize: 24,
-          shadows: [
-            Shadow(
-              blurRadius: 6.0,
-              color: Colors.black.withOpacity(0.8),
-              offset: const Offset(1, 1),
-            ),
-          ],
-        ),
-      ),
-      centerTitle: true,
-      backgroundColor: theme.colorScheme.primary,
-      elevation: 8,
-      shadowColor: Colors.black.withOpacity(0.9),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(35)),
-      ),
-      toolbarHeight: kToolbarHeight + 40,
+      title: Text('Estates for Device ${widget.deviceID}'),
+      backgroundColor: theme.colorScheme.surface,
       actions: [
         IconButton(
-          icon: Icon(Icons.info_outline,
-              color: theme.colorScheme.onPrimary, size: 28),
-          onPressed: () {
-            // Add action for info button
-          },
-        ),
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: IconButton(
-            icon: Icon(Icons.refresh,
-                color: theme.colorScheme.onPrimary, size: 28),
-            onPressed: fetchEstates,
-          ),
+          icon: const Icon(Icons.refresh),
+          onPressed: _fetchEstates,
         ),
       ],
     );
@@ -254,7 +139,10 @@ class _EstatesPageState extends State<EstatesPage> {
                   valueColor: theme.colorScheme.secondary,
                 ),
               )
-            : _buildEstateList(theme, isWideScreen),
+            : RefreshIndicator(
+                onRefresh: _fetchEstates,
+                child: _buildEstateList(theme, isWideScreen),
+              ),
       ),
     );
   }
@@ -264,135 +152,67 @@ class _EstatesPageState extends State<EstatesPage> {
       padding: const EdgeInsets.all(16),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: isWideScreen ? 3 : 1,
-        childAspectRatio: isWideScreen ? 1 : 0.7,
+        childAspectRatio: isWideScreen ? 1 : 16 / 9,
         crossAxisSpacing: 16,
-        mainAxisSpacing: isWideScreen ? 16 : 16,
+        mainAxisSpacing: 16,
       ),
       itemCount: estates.length,
       itemBuilder: (context, index) {
         final estate = estates[index];
-        return _buildEstateCard(estate, theme, index, isWideScreen);
+        return _buildEstateCard(estate, theme, index);
       },
     );
   }
 
-  Widget _buildEstateCard(
-      Estate estate, ThemeData theme, int index, bool isWideScreen) {
-    return AspectRatio(
-      aspectRatio: isWideScreen ? 1 : 0.7,
-      child: GestureDetector(
-        onTap: () => _selectEstate(index),
-        child: Card(
-          elevation: 6.0,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: _buildEstateCardContent(estate, theme, index),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEstateCardContent(Estate estate, ThemeData theme, int index) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        image: DecorationImage(
-          image: AssetImage(estate.scenes.isNotEmpty
-              ? estate.scenes[0].imageUrl
-              : 'assets/placeholder.jpg'),
-          fit: BoxFit.cover,
-          colorFilter: ColorFilter.mode(
-            theme.colorScheme.primaryContainer.withOpacity(0.6),
-            BlendMode.lighten,
+  Widget _buildEstateCard(Estate estate, ThemeData theme, int index) {
+    return Card(
+      elevation: 8.0,
+      shadowColor: Colors.white.withOpacity(0.8),
+      semanticContainer: true,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          image: DecorationImage(
+            image: AssetImage(estate.scenes.isNotEmpty
+                ? estate.scenes[0].imageUrl
+                : 'assets/placeholder.jpg'),
+            fit: BoxFit.cover,
+            colorFilter: ColorFilter.mode(
+              theme.colorScheme.primaryContainer.withOpacity(0.8),
+              BlendMode.lighten,
+            ),
           ),
         ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            _buildEstateHeader(estate, theme),
-            _buildSceneChips(estate.scenes, theme, index),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEstateHeader(Estate estate, ThemeData theme) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                estate.estateName,
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.primary,
-                  shadows: [
-                    Shadow(
-                      blurRadius: 2.0,
-                      color: Colors.black.withOpacity(0.3),
-                      offset: const Offset(1, 1),
+        child: InkWell(
+          onTap: () => _selectEstate(index),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        estate.estateName,
+                        style: theme.textTheme.titleLarge,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
+                    _buildStatusChip(estate.status, theme),
                   ],
                 ),
-              ),
-              Text(
-                estate.estateID,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.primary.withOpacity(0.8),
-                  shadows: [
-                    Shadow(
-                      blurRadius: 2.0,
-                      color: Colors.black.withOpacity(0.3),
-                      offset: const Offset(1, 1),
-                    ),
-                  ],
+                Text(
+                  'ID: ${estate.estateID}',
+                  style: theme.textTheme.bodySmall,
                 ),
-              ),
-            ],
+                const Spacer(),
+                _buildEstateStats(theme, estate),
+              ],
+            ),
           ),
-        ),
-        _buildStatusChip(estate.status, theme),
-      ],
-    );
-  }
-
-  Widget _buildSceneChips(
-      List<Scene> scenes, ThemeData theme, int estateIndex) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: scenes.map((scene) => _buildSceneChip(scene, theme)).toList(),
-    );
-  }
-
-  Widget _buildSceneChip(Scene scene, ThemeData theme) {
-    return Chip(
-      label: Text(
-        scene.sceneName,
-        style: TextStyle(
-          color: theme.colorScheme.surface,
-          fontWeight: FontWeight.bold,
-          fontSize: 12,
-        ),
-      ),
-      backgroundColor: theme.colorScheme.primaryContainer,
-      elevation: 4,
-      shadowColor: theme.colorScheme.primary.withOpacity(0.8),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(
-          color: theme.colorScheme.primaryContainer,
-          width: 1,
         ),
       ),
     );
@@ -401,40 +221,127 @@ class _EstatesPageState extends State<EstatesPage> {
   Widget _buildStatusChip(String status, ThemeData theme) {
     final chipData = _getStatusChipData(status);
     return Chip(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       avatar: Icon(chipData.icon, color: theme.colorScheme.surface, size: 18),
       label: Text(
         status,
         style: TextStyle(
-          color: theme.colorScheme.surface,
-          fontWeight: FontWeight.bold,
-          fontSize: 12,
-        ),
+            color: theme.colorScheme.surface, fontWeight: FontWeight.bold),
       ),
       backgroundColor: chipData.color,
-      elevation: 6,
-      shadowColor: chipData.color.withOpacity(0.8),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: chipData.color, width: 1),
-      ),
     );
   }
 
   ({Color color, IconData icon}) _getStatusChipData(String status) {
-    switch (status) {
-      case 'Available':
+    switch (status.toLowerCase()) {
+      case 'available':
         return (color: Colors.green, icon: Icons.check_circle);
-      case 'Unavailable':
+      case 'unavailable':
         return (color: Colors.red, icon: Icons.cancel);
       default:
         return (color: Colors.orange, icon: Icons.warning);
     }
   }
 
-  void _showErrorSnackBar(String message) {
+  Widget _buildEstateStats(ThemeData theme, Estate estate) {
+    return Wrap(
+      spacing: 8.0,
+      runSpacing: 4.0,
+      children: estate.scenes.map((scene) {
+        return Chip(
+          label: Text(scene.sceneName),
+          backgroundColor: theme.colorScheme.secondary,
+          labelStyle: TextStyle(color: theme.colorScheme.primary),
+        );
+      }).toList(),
+    );
+  }
+
+  void _selectEstate(int index) {
+    if (index >= 0 && index < estates.length) {
+      _socketManager.sendSceneChangeCommand('s$index', widget.deviceID);
+      _navigateToScenePage(estates[index]);
+    } else {
+      _showSnackBar('Invalid estate selection', isError: true);
+    }
+  }
+
+  void _navigateToScenePage(Estate estate) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ScenePage(
+          estateID: estate.estateID,
+          deviceID: widget.deviceID,
+          estateName: estate.estateName,
+          allScenes: estate.scenes,
+          currentScene: estate.scenes.isNotEmpty ? estate.scenes[0] : null,
+          nextScene: estate.scenes.length > 1 ? estate.scenes[1] : null,
+        ),
+      ),
+    );
+  }
+
+  void _showSnackBar(String message, {bool isError = false}) {
+    if (!mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Colors.red : Colors.green,
+        duration: Duration(seconds: isError ? 5 : 3),
+        action: isError
+            ? SnackBarAction(
+                label: 'Retry',
+                onPressed: _fetchEstates,
+              )
+            : null,
+      ),
+    );
+  }
+}
+
+class Estate {
+  final String estateID;
+  final String estateName;
+  final String status;
+  final List<Scene> scenes;
+
+  Estate({
+    required this.estateID,
+    required this.estateName,
+    required this.status,
+    required this.scenes,
+  });
+
+  factory Estate.fromJson(Map<String, dynamic> json) {
+    return Estate(
+      estateID: json['estateID'],
+      estateName: json['estateName'],
+      status: json['status'],
+      scenes: (json['scenes'] as List<dynamic>)
+          .map((sceneJson) => Scene.fromJson(sceneJson))
+          .toList(),
+    );
+  }
+}
+
+class Scene {
+  final String id;
+  final String sceneName;
+  final String imageUrl;
+
+  Scene({
+    required this.id,
+    required this.sceneName,
+    required this.imageUrl,
+  });
+
+  factory Scene.fromJson(Map<String, dynamic> json) {
+    return Scene(
+      id: json['id'],
+      sceneName: json['sceneName'],
+      imageUrl: json['imageUrl'],
     );
   }
 }
