@@ -15,6 +15,8 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
+  static const String _apiBaseUrl =
+      'https://secondary-mindy-twinverse-5a55a10e.koyeb.app';
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -67,7 +69,7 @@ class _LoginPageState extends State<LoginPage> {
       try {
         final response = await http
             .post(
-              Uri.parse('http://192.168.1.10:3000/users/login'),
+              Uri.parse('$_apiBaseUrl/users/login'),
               headers: <String, String>{
                 'Content-Type': 'application/json; charset=UTF-8',
               },
