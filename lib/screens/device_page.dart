@@ -18,7 +18,8 @@ class DevicesPage extends StatefulWidget {
 
 class _DevicesPageState extends State<DevicesPage> {
   static const String _userIdKey = 'user_id';
-  static const String _apiBaseUrl = 'https://secondary-mindy-twinverse-5a55a10e.koyeb.app';
+  static const String _apiBaseUrl =
+      'https://secondary-mindy-twinverse-5a55a10e.koyeb.app';
 
   List<Device> devices = [];
   final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
@@ -34,21 +35,6 @@ class _DevicesPageState extends State<DevicesPage> {
   Future<void> _initializeSocketAndFetchDevices() async {
     await _socketManager.initializeSocket();
     await fetchDevices();
-    _listenToDeviceUpdates();
-  }
-
-  void _listenToDeviceUpdates() {
-    _socketManager.deviceStatusStream.listen((data) {
-      if (mounted) {
-        final updatedDevice = Device.fromJson(data);
-        setState(() {
-          final index = devices.indexWhere((d) => d.id == updatedDevice.id);
-          if (index != -1) {
-            devices[index] = updatedDevice;
-          }
-        });
-      }
-    });
   }
 
   Future<void> fetchDevices() async {
@@ -206,7 +192,14 @@ class _DevicesPageState extends State<DevicesPage> {
           ),
         ),
         child: InkWell(
-          onTap: () => _navigateToEstatePage(device),
+          onTap: () {
+            if (device.status.toLowerCase() == 'online') {
+              _navigateToEstatePage(device);
+            } else {
+              _showSnackBar('Device is offline. Please try again later.',
+                  isError: true);
+            }
+          },
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -239,7 +232,8 @@ class _DevicesPageState extends State<DevicesPage> {
     );
   }
 
-  Widget _buildStatusChip(String status, ThemeData theme, int index, Device device) {
+  Widget _buildStatusChip(
+      String status, ThemeData theme, int index, Device device) {
     Color iconColor;
     IconData iconData;
 
@@ -270,12 +264,14 @@ class _DevicesPageState extends State<DevicesPage> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         _buildStatItem(theme, 'Usage', '75%', Icons.pie_chart),
-        _buildStatItem(theme, 'Estates', '${device.estateIDs.length}', Icons.apartment),
+        _buildStatItem(
+            theme, 'Estates', '${device.estateIDs.length}', Icons.apartment),
       ],
     );
   }
 
-  Widget _buildStatItem(ThemeData theme, String label, String value, IconData icon) {
+  Widget _buildStatItem(
+      ThemeData theme, String label, String value, IconData icon) {
     return Column(
       children: [
         Icon(icon, color: theme.colorScheme.primary),
@@ -290,7 +286,7 @@ class _DevicesPageState extends State<DevicesPage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => EstatesPage(deviceID: device.id),
+        builder: (context) => EstatesPage(deviceID: device.deviceId),
       ),
     );
   }
