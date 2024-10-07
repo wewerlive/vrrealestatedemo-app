@@ -49,7 +49,7 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _checkExistingLogin() async {
-    final token = await _secureStorage.read(key: 'auth_token');
+    final token = await _secureStorage.read(key: 'user_id');
     if (!mounted) return;
     if (token != null) {
       Navigator.pushReplacement(
@@ -67,8 +67,7 @@ class _LoginPageState extends State<LoginPage> {
       try {
         final response = await http
             .post(
-              Uri.parse(
-                  'https://secondary-mindy-twinverse-5a55a10e.koyeb.app/users/createUser'),
+              Uri.parse('http://192.168.1.10:3000/users/login'),
               headers: <String, String>{
                 'Content-Type': 'application/json; charset=UTF-8',
               },
@@ -81,11 +80,9 @@ class _LoginPageState extends State<LoginPage> {
 
         if (response.statusCode == 200) {
           final responseData = jsonDecode(response.body);
-          final token =
-              responseData['uid']; // Assuming the UID is returned as a token
+
           final id = responseData['uid'];
 
-          await _secureStorage.write(key: 'auth_token', value: token);
           await _secureStorage.write(key: 'user_id', value: id);
 
           _showSnackBar('Login successful');

@@ -6,16 +6,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:vrrealstatedemo/screens/estate_page.dart';
-import 'package:vrrealstatedemo/utils/socket_manager.dart';
 import 'package:vrrealstatedemo/utils/progressbar.dart';
 
 class Device {
+  final String id;
   final String deviceId;
   final String deviceName;
   String status;
-  List<String> estateIDs;
+  final List<String> estateIDs;
 
   Device({
+    required this.id,
     required this.deviceId,
     required this.deviceName,
     required this.status,
@@ -24,7 +25,8 @@ class Device {
 
   factory Device.fromJson(Map<String, dynamic> json) {
     return Device(
-      deviceId: json['deviceId'],
+      id: json['id'],
+      deviceId: json['deviceID'],
       deviceName: json['deviceName'],
       status: json['status'],
       estateIDs: List<String>.from(json['estateIDs']),
@@ -43,14 +45,13 @@ class _DevicesPageState extends State<DevicesPage> {
   List<Device> devices = [];
   final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
   bool isLoading = false;
-  late SocketManager _socketManager;
-  // ignore: unused_field
-  StreamSubscription? _deviceStatusSubscription;
+  // late SocketManager _socketManager;
+  // StreamSubscription? _deviceStatusSubscription;
 
   @override
   void initState() {
     super.initState();
-    _initializeSocketManager();
+    // _initializeSocketManager();
     fetchDevices();
   }
 
@@ -123,7 +124,7 @@ class _DevicesPageState extends State<DevicesPage> {
                   ),
                 )
               : RefreshIndicator(
-                  onRefresh: _initializeSocketManager,
+                  onRefresh: fetchDevices,
                   child: _buildDeviceList(theme, isWideScreen),
                 ),
         ),
@@ -131,29 +132,29 @@ class _DevicesPageState extends State<DevicesPage> {
     );
   }
 
-  Future<void> _initializeSocketManager() async {
-    _socketManager = SocketManager();
-    await _socketManager.initializeSocket();
-    _listenToDeviceStatusUpdates();
-  }
+  // Future<void> _initializeSocketManager() async {
+  //   _socketManager = SocketManager();
+  //   await _socketManager.initializeSocket();
+  //   _listenToDeviceStatusUpdates();
+  // }
 
-  void _listenToDeviceStatusUpdates() {
-    _deviceStatusSubscription =
-        _socketManager.deviceStatusStream.listen((data) {
-          print('Device status update: $data');
-      final updatedDeviceIndex =
-          devices.indexWhere((device) => device.deviceId == data['deviceId']);
-      if (updatedDeviceIndex != -1) {
-        setState(() {
-          for (var i = 0; i < devices.length; i++) {
-            devices[i].status = i == updatedDeviceIndex ? 'Online' : 'Offline';
-          }
-        });
-      }
-    }, onError: (error) {
-      _showSnackBar('Error updating device status', isError: true);
-    });
-  }
+  // void _listenToDeviceStatusUpdates() {
+  //   _deviceStatusSubscription =
+  //       _socketManager.deviceStatusStream.listen((data) {
+  //     print('Device status update: $data');
+  //     final updatedDeviceIndex =
+  //         devices.indexWhere((device) => device.deviceId == data['deviceId']);
+  //     if (updatedDeviceIndex != -1) {
+  //       setState(() {
+  //         for (var i = 0; i < devices.length; i++) {
+  //           devices[i].status = i == updatedDeviceIndex ? 'Online' : 'Offline';
+  //         }
+  //       });
+  //     }
+  //   }, onError: (error) {
+  //     _showSnackBar('Error updating device status', isError: true);
+  //   });
+  // }
 
   Future<void> fetchDevices() async {
     if (!mounted) return;
@@ -166,18 +167,28 @@ class _DevicesPageState extends State<DevicesPage> {
     String errorMessage;
 
     try {
-      final response = await http.get(Uri.parse(
-          'https://secondary-mindy-twinverse-5a55a10e.koyeb.app/headsets/$id'));
+      final response = await http.get(
+        Uri.parse('http://192.168.1.10:3000/headsets/$id'),
+        headers: {
+          HttpHeaders.contentTypeHeader: 'application/json',
+        },
+      );
 
       if (!mounted) return;
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
         setState(() {
-          devices = responseData.entries
-              .map((entry) =>
-                  Device.fromJson(entry.value..addAll({'id': entry.key})))
-              .toList();
+          devices = responseData.entries.map((entry) {
+            final deviceData = entry.value as Map<String, dynamic>;
+            return Device(
+              id: entry.key,
+              deviceId: deviceData['deviceID'],
+              deviceName: deviceData['deviceName'],
+              status: deviceData['status'],
+              estateIDs: List<String>.from(deviceData['estateIDs']),
+            );
+          }).toList();
         });
         _showSnackBar('Devices loaded successfully', isError: false);
       } else {
@@ -442,7 +453,7 @@ class _DevicesPageState extends State<DevicesPage> {
 
   Future<void> _handleLogout() async {
     const FlutterSecureStorage secureStorage = FlutterSecureStorage();
-    await secureStorage.delete(key: 'auth_token');
+    await secureStorage.delete(key: 'user_id');
     if (!mounted) return;
     Navigator.of(context).pushReplacementNamed('/login');
   }

@@ -67,7 +67,7 @@ class Init extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<String?>(
-      future: const FlutterSecureStorage().read(key: 'auth_token'),
+      future: const FlutterSecureStorage().read(key: 'user_id'),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.done) {
           FlutterNativeSplash.remove();

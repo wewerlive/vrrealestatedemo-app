@@ -7,11 +7,13 @@ class SocketManager {
   factory SocketManager() => _instance;
 
   late IO.Socket _socket;
-  final _deviceStatusController = StreamController<Map<String, dynamic>>.broadcast();
+  final _deviceStatusController =
+      StreamController<Map<String, dynamic>>.broadcast();
   final _locationController = StreamController<String>.broadcast();
   final _sceneController = StreamController<String>.broadcast();
 
-  Stream<Map<String, dynamic>> get deviceStatusStream => _deviceStatusController.stream;
+  Stream<Map<String, dynamic>> get deviceStatusStream =>
+      _deviceStatusController.stream;
   Stream<String> get locationStream => _locationController.stream;
   Stream<String> get sceneStream => _sceneController.stream;
 
@@ -22,25 +24,33 @@ class SocketManager {
     final userId = await storage.read(key: 'user_id');
 
     if (userId != null) {
-      _socket = IO.io('https://secondary-mindy-twinverse-5a55a10e.koyeb.app', <String, dynamic>{
+      _socket = IO.io('http://192.168.1.10:3000/', <String, dynamic>{
         'transports': ['websocket'],
-        'autoConnect': false,
+        'autoConnect': true
       });
 
       _socket.connect();
       _socket.on('connect', (_) => print('Connected to socket server'));
-      _socket.on('deviceStatus', (data) => _deviceStatusController.add(data));
-      _socket.on('sceneChange', (data) => _sceneController.add(data));
-      _socket.on('teleChange', (data) => _locationController.add(data));
+      _socket.on('deviceStatus', (data) {
+        _deviceStatusController.add(data);
+      });
+      _socket.on('sceneChange', (data) {
+        _sceneController.add(data);
+      });
+      _socket.on('teleChange', (data) {
+        _locationController.add(data);
+      });
     }
   }
 
   void sendHeadsetStatusUpdate(String deviceId) {
+    print(deviceId);
     _socket.emit('headsetStatusUpdate', deviceId);
   }
 
   void sendSceneChangeCommand(String sceneId, String deviceId) {
-    _socket.emit('sceneChangeCommand', {'sceneID': sceneId, 'deviceID': deviceId});
+    _socket
+        .emit('sceneChangeCommand', {'sceneID': sceneId, 'deviceID': deviceId});
   }
 
   void sendTeleChangeCommand(String teleId, String deviceId) {

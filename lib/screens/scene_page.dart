@@ -8,12 +8,14 @@ class ScenePage extends StatefulWidget {
   final Scene? currentScene;
   final String estateName;
   final String estateID;
+  final String deviceID;
   final Scene? nextScene;
 
   const ScenePage({
     super.key,
     this.currentScene,
     required this.estateID,
+    required this.deviceID,
     required this.estateName,
     required this.allScenes,
     this.nextScene,
@@ -50,7 +52,7 @@ class _ScenePageState extends State<ScenePage> {
   }
 
   void _selectScene(int index) {
-    _socketManager.sendTeleChangeCommand('t$index', widget.estateID);
+    _socketManager.sendTeleChangeCommand('t$index', widget.deviceID);
   }
 
   @override

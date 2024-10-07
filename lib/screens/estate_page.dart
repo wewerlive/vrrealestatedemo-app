@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:vrrealstatedemo/utils/progressbar.dart';
 import 'package:vrrealstatedemo/screens/scene_page.dart';
@@ -63,6 +64,7 @@ class EstatesPage extends StatefulWidget {
 class _EstatesPageState extends State<EstatesPage> {
   List<Estate> estates = [];
   bool isLoading = false;
+  final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
   final SocketManager _socketManager = SocketManager();
   // ignore: unused_field
   StreamSubscription? _locationSubscription;
@@ -81,7 +83,7 @@ class _EstatesPageState extends State<EstatesPage> {
     try {
       await _socketManager.initializeSocket();
       await fetchEstates();
-      _listenToLocationUpdates();
+      // _listenToLocationUpdates();
     } catch (e) {
       _showErrorSnackBar('Failed to initialize: ${e.toString()}');
     } finally {
@@ -92,9 +94,11 @@ class _EstatesPageState extends State<EstatesPage> {
   }
 
   Future<void> fetchEstates() async {
+    final id = await secureStorage.read(key: 'user_id');
+
     try {
-      final response = await http.get(Uri.parse(
-          'https://secondary-mindy-twinverse-5a55a10e.koyeb.app/users/${widget.deviceID}/estates'));
+      final response = await http
+          .get(Uri.parse('http://192.168.1.10:3000/users/$id/estates'));
 
       if (response.statusCode == 200) {
         final List<dynamic> estatesJson = json.decode(response.body);
@@ -109,25 +113,25 @@ class _EstatesPageState extends State<EstatesPage> {
     }
   }
 
-  void _listenToLocationUpdates() {
-    _locationSubscription = _socketManager.locationStream.listen(
-      (index) => _handleLocationUpdate(index),
-      onError: (error) => _showErrorSnackBar('Location update error: $error'),
-    );
-  }
+  // void _listenToLocationUpdates() {
+  //   _locationSubscription = _socketManager.locationStream.listen(
+  //     (index) => _handleLocationUpdate(index),
+  //     onError: (error) => _showErrorSnackBar('Location update error: $error'),
+  //   );
+  // }
 
-  void _handleLocationUpdate(String index) {
-    print(index);
-    final parsedIndex = int.tryParse(index);
-    if (parsedIndex != null &&
-        parsedIndex >= 0 &&
-        parsedIndex < estates.length) {
-      final selectedEstate = estates[parsedIndex];
-      _navigateToScenePage(selectedEstate);
-    } else {
-      _showErrorSnackBar('Invalid estate index received');
-    }
-  }
+  // void _handleLocationUpdate(String index) {
+  //   print(index);
+  //   final parsedIndex = int.tryParse(index);
+  //   if (parsedIndex != null &&
+  //       parsedIndex >= 0 &&
+  //       parsedIndex < estates.length) {
+  //     final selectedEstate = estates[parsedIndex];
+  //     _navigateToScenePage(selectedEstate);
+  //   } else {
+  //     _showErrorSnackBar('Invalid estate index received');
+  //   }
+  // }
 
   void _navigateToScenePage(Estate estate) {
     if (!mounted) return;
@@ -136,6 +140,7 @@ class _EstatesPageState extends State<EstatesPage> {
       context,
       MaterialPageRoute(
         builder: (context) => ScenePage(
+          deviceID: widget.deviceID,
           allScenes: estate.scenes,
           currentScene: estate.scenes.isNotEmpty ? estate.scenes[0] : null,
           estateName: estate.estateName,
@@ -147,13 +152,14 @@ class _EstatesPageState extends State<EstatesPage> {
   }
 
   void _selectEstate(int index) {
-  if (index >= 0 && index < estates.length) {
-    _socketManager.sendSceneChangeCommand('s$index', widget.deviceID);
-    _showLoadingDialog();
-  } else {
-    _showErrorSnackBar('Invalid estate selection');
+    if (index >= 0 && index < estates.length) {
+      _socketManager.sendSceneChangeCommand('s$index', widget.deviceID);
+      _navigateToScenePage(estates[index]);
+      // _showLoadingDialog();
+    } else {
+      _showErrorSnackBar('Invalid estate selection');
+    }
   }
-}
 
   void _showLoadingDialog() {
     showDialog(
