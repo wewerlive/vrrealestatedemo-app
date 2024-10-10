@@ -44,11 +44,13 @@ class SocketManager {
   }
 
   void sendSceneChangeCommand(String sceneId, String deviceId) {
+    print('sceneId: $sceneId, deviceId: $deviceId');
     _socket
         .emit('sceneChangeCommand', {'sceneID': sceneId, 'deviceID': deviceId});
   }
 
   void sendTeleChangeCommand(String teleId, String deviceId) {
+    print('teleId: $teleId, deviceId: $deviceId');
     _socket.emit('teleChangeCommand', {'teleID': teleId, 'deviceID': deviceId});
   }
 

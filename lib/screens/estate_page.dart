@@ -47,7 +47,6 @@ class _EstatesPageState extends State<EstatesPage> {
     try {
       final response = await _getEstates(userId);
       final estates = _parseEstatesResponse(response);
-
       if (mounted) {
         setState(() {
           this.estates = estates;
@@ -78,6 +77,7 @@ class _EstatesPageState extends State<EstatesPage> {
 
   List<Estate> _parseEstatesResponse(http.Response response) {
     final List<dynamic> responseData = json.decode(response.body);
+    // print(responseData);
     return responseData.map((json) => Estate.fromJson(json)).toList();
   }
 
@@ -316,12 +316,13 @@ class Estate {
 
   factory Estate.fromJson(Map<String, dynamic> json) {
     return Estate(
-      estateID: json['estateID'],
-      estateName: json['estateName'],
-      status: json['status'],
-      scenes: (json['scenes'] as List<dynamic>)
-          .map((sceneJson) => Scene.fromJson(sceneJson))
-          .toList(),
+      estateID: json['estateID']?.toString() ?? '',
+      estateName: json['estateName']?.toString() ?? 'Unknown Estate',
+      status: json['status']?.toString() ?? 'Unknown',
+      scenes: (json['scenes'] as List<dynamic>?)
+              ?.map((sceneJson) => Scene.fromJson(sceneJson))
+              .toList() ??
+          [],
     );
   }
 }
@@ -339,9 +340,11 @@ class Scene {
 
   factory Scene.fromJson(Map<String, dynamic> json) {
     return Scene(
-      id: json['id'],
-      sceneName: json['sceneName'],
-      imageUrl: json['imageUrl'],
+      id: json['id']?.toString() ?? '',
+      sceneName: json['sceneName']?.toString() ??
+          json['scneName']?.toString() ??
+          'Unknown',
+      imageUrl: json['imageUrl']?.toString() ?? 'assets/estate.jpg',
     );
   }
 }
