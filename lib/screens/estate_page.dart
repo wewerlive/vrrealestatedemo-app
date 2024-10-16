@@ -61,7 +61,7 @@ class _EstatesPageState extends State<EstatesPage> {
 
   Future<http.Response> _getEstates(String userId) async {
     final response = await http.get(
-      Uri.parse('$_apiBaseUrl/users/$userId/estates'),
+      Uri.parse('$_apiBaseUrl/users/$userId/headsets/${widget.deviceID}/estates'),
       headers: {'Content-Type': 'application/json'},
     ).timeout(
       const Duration(seconds: 10),
@@ -103,7 +103,7 @@ class _EstatesPageState extends State<EstatesPage> {
   AppBar _buildAppBar(ThemeData theme) {
     return AppBar(
       leading: IconButton(
-        onPressed: () => Navigator.pushNamed(context, '/devices'),
+        onPressed: () => Navigator.pushReplacementNamed(context, '/devices'),
         icon: const Icon(Icons.arrow_back),
       ),
       title: Text('Estates for Device ${widget.deviceID}'),

@@ -117,6 +117,10 @@ class _DevicesPageState extends State<DevicesPage> {
     return AppBar(
       title: const Text('Devices'),
       backgroundColor: theme.colorScheme.surface,
+      leading: IconButton(
+        icon: const Icon(Icons.menu),
+        onPressed: () {},
+      ),
       actions: [
         IconButton(
           icon: const Icon(Icons.logout),
